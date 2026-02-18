@@ -1,4 +1,2 @@
 streamlit
-Pillow
-pypdf
-pandas
+anthropic
