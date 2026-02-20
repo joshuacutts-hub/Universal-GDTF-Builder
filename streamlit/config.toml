@@ -1,19 +1,9 @@
 [theme]
-# grandMA3 default colour theme
 base = "dark"
-
-# MA3 uses amber/yellow as its primary accent (executor buttons, active values)
 primaryColor = "#E8A000"
-
-# MA3 main background — near black
 backgroundColor = "#0A0A0A"
-
-# MA3 panel/window background — dark grey
 secondaryBackgroundColor = "#1A1A1A"
-
-# MA3 default text — off white
 textColor = "#E0E0E0"
-
 font = "monospace"
 
 [server]
