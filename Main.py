@@ -7,6 +7,7 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 import zipfile, io, uuid, re, json, base64
 import anthropic
+import pdfplumber
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  GDTF ATTRIBUTE MAP  (name → gdtf_attr, feature_group, feature, act_group)
@@ -415,6 +416,197 @@ def parse_pdf_with_claude(pdf_bytes: bytes, api_key: str) -> dict:
     return json.loads(raw_text)
 
 
+def parse_pdf_with_pdfplumber(pdf_bytes: bytes) -> dict:
+    """
+    Extract text from a PDF using pdfplumber (no API key needed).
+    Attempts to detect modes and channel rows from tables and raw text.
+    Returns a dict in the same schema as the Claude parser so the rest
+    of the app can treat both paths identically.
+    """
+    extracted_pages = []
+
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        for page in pdf.pages:
+            page_data = {"text": page.extract_text() or "", "tables": []}
+
+            for table in page.extract_tables():
+                # Filter out completely empty tables
+                cleaned = [
+                    [cell.strip() if cell else "" for cell in row]
+                    for row in table
+                    if any(cell and cell.strip() for cell in row)
+                ]
+                if cleaned:
+                    page_data["tables"].append(cleaned)
+
+            extracted_pages.append(page_data)
+
+    # ── Heuristic channel detection ──────────────────────────────────────────
+    # Look for rows that start with a number (channel number) in tables
+    # and try to identify the channel name and any value ranges.
+
+    # Patterns to identify DMX value range rows like "0-10  Open" or "0   10   Strobe"
+    RANGE_RE = re.compile(
+        r'(\d{1,3})\s*[-–~to]+\s*(\d{1,3})\s+(.+)', re.IGNORECASE
+    )
+    CHAN_NUM_RE = re.compile(r'^\s*(\d{1,3})\s*$')
+
+    # Mode header keywords
+    MODE_KEYWORDS = re.compile(
+        r'(mode|channel\s*\w*\s*chart|dmx\s*chart|channel\s*list|(\d+)\s*ch)',
+        re.IGNORECASE
+    )
+
+    modes_found = {}
+    current_mode = "Default Mode"
+    current_channels = []
+    current_ch_name = None
+    current_slots = []
+    current_ch_number = 0
+
+    def flush_channel():
+        nonlocal current_ch_name, current_slots, current_ch_number
+        if current_ch_name:
+            current_channels.append({
+                "number": current_ch_number,
+                "name": current_ch_name,
+                "is_fine": is_fine(current_ch_name),
+                "slots": current_slots,
+            })
+        current_ch_name = None
+        current_slots = []
+
+    def flush_mode():
+        nonlocal current_channels
+        flush_channel()
+        if current_channels:
+            modes_found[current_mode] = list(current_channels)
+        current_channels.clear()
+
+    for page_data in extracted_pages:
+        # ── Try structured tables first ──────────────────────────────────────
+        for table in page_data["tables"]:
+            for row in table:
+                if not row:
+                    continue
+
+                row_text = " | ".join(r for r in row if r)
+
+                # Detect mode header in any cell
+                if MODE_KEYWORDS.search(row_text) and len(row_text) < 60:
+                    flush_mode()
+                    current_mode = row_text.strip().replace("|", "").strip()
+                    continue
+
+                # Detect channel row: first cell is a number, second is a name
+                if len(row) >= 2 and CHAN_NUM_RE.match(row[0]):
+                    flush_channel()
+                    current_ch_number = int(row[0].strip())
+                    current_ch_name = row[1].strip() if row[1] else f"Ch {current_ch_number}"
+
+                    # Check remaining cells for a value range description
+                    rest = " ".join(r for r in row[2:] if r).strip()
+                    m = RANGE_RE.match(rest)
+                    if m:
+                        current_slots.append({
+                            "name": m.group(3).strip(),
+                            "dmx_from": int(m.group(1)),
+                            "dmx_to": int(m.group(2)),
+                            "physical_from": round(int(m.group(1)) / 255, 4),
+                            "physical_to": round(int(m.group(2)) / 255, 4),
+                        })
+                    continue
+
+                # Detect value range rows (sub-rows under a channel)
+                m = RANGE_RE.match(row[0]) if row[0] else None
+                if m and current_ch_name:
+                    current_slots.append({
+                        "name": m.group(3).strip(),
+                        "dmx_from": int(m.group(1)),
+                        "dmx_to": int(m.group(2)),
+                        "physical_from": round(int(m.group(1)) / 255, 4),
+                        "physical_to": round(int(m.group(2)) / 255, 4),
+                    })
+                    continue
+
+                # Multi-cell range row: "0" | "10" | "Open"
+                if (len(row) >= 3
+                        and CHAN_NUM_RE.match(row[0])
+                        and CHAN_NUM_RE.match(row[1])
+                        and row[2]
+                        and current_ch_name):
+                    current_slots.append({
+                        "name": row[2].strip(),
+                        "dmx_from": int(row[0].strip()),
+                        "dmx_to": int(row[1].strip()),
+                        "physical_from": round(int(row[0].strip()) / 255, 4),
+                        "physical_to": round(int(row[1].strip()) / 255, 4),
+                    })
+
+        # ── Fall back to raw text for pages with no useful tables ────────────
+        text = page_data["text"]
+        if not text:
+            continue
+
+        for line in text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+
+            # Mode header
+            if MODE_KEYWORDS.search(line) and len(line) < 80:
+                flush_mode()
+                current_mode = line.strip()
+                continue
+
+            # Channel line: "1  Dimmer" or "Ch1 - Dimmer"
+            ch_line = re.match(
+                r'^(?:ch(?:annel)?\s*)?(\d{1,3})\s*[-–.]?\s+([A-Za-z][^\d].{1,40}?)$',
+                line, re.IGNORECASE
+            )
+            if ch_line:
+                flush_channel()
+                current_ch_number = int(ch_line.group(1))
+                current_ch_name = ch_line.group(2).strip()
+                continue
+
+            # Value range line under current channel
+            m = RANGE_RE.match(line)
+            if m and current_ch_name:
+                current_slots.append({
+                    "name": m.group(3).strip(),
+                    "dmx_from": int(m.group(1)),
+                    "dmx_to": int(m.group(2)),
+                    "physical_from": round(int(m.group(1)) / 255, 4),
+                    "physical_to": round(int(m.group(2)) / 255, 4),
+                })
+
+    flush_mode()
+
+    # If nothing was detected at all, dump all text as a single note
+    if not modes_found:
+        all_text = "\n".join(p["text"] for p in extracted_pages if p["text"])
+        return {
+            "fixture_name": "Unknown — check extracted text",
+            "manufacturer": "Unknown",
+            "modes": [],
+            "_raw_text": all_text,
+            "_parse_warning": (
+                "pdfplumber could not find a structured channel table. "
+                "The raw text is shown below — copy channel names into Manual Entry."
+            )
+        }
+
+    return {
+        "fixture_name": "Unknown — edit above",
+        "manufacturer": "Unknown — edit above",
+        "modes": [
+            {"name": mode_name, "channels": channels}
+            for mode_name, channels in modes_found.items()
+        ],
+    }
+
+
 def parsed_dict_to_modes(parsed: dict):
     name = parsed.get("fixture_name", "Unknown Fixture")
     mfr  = parsed.get("manufacturer", "Unknown")
@@ -586,64 +778,128 @@ tab_pdf, tab_manual = st.tabs(["📄  PDF Import  (AI)", "✏️  Manual Entry"]
 #  TAB 1 — PDF IMPORT
 # ─────────────────────────────────────────────────────────────────────────────
 with tab_pdf:
-    st.markdown("""
-    <div class="info-box">
-    Upload a manufacturer's PDF fixture manual. Claude reads every page, identifies all DMX modes,
-    and extracts every channel's sub-ranges — gobo names, color wheel slots, strobe types, macro
-    labels — so MA3's encoder wheels and preset pools are fully populated with real slot data.
-    </div>
-    """, unsafe_allow_html=True)
 
-    api_key = st.text_input(
-        "Anthropic API Key",
-        type="password",
-        help="Your key is used only for this request and is never stored.",
-        placeholder="sk-ant-…"
+    # ── Parser mode toggle ────────────────────────────────────────────────────
+    parser_mode = st.radio(
+        "Parser method",
+        ["🤖 Claude AI (full slot data, needs API key)",
+         "📋 pdfplumber (no API key, basic channel names only)"],
+        horizontal=True,
+        help="Claude extracts gobo names, DMX ranges, and all slot data. "
+             "pdfplumber extracts text only — good for getting channel names quickly."
     )
+    use_claude = parser_mode.startswith("🤖")
+
+    if use_claude:
+        st.markdown("""
+        <div class="info-box">
+        Claude reads every page and extracts all DMX modes, channel names, gobo/color slot names,
+        DMX ranges, strobe types, and macro labels — giving MA3 full wheel and preset pool data.
+        </div>
+        """, unsafe_allow_html=True)
+        api_key = st.text_input(
+            "Anthropic API Key",
+            type="password",
+            help="Used only for this request, never stored.",
+            placeholder="sk-ant-…"
+        )
+    else:
+        st.markdown("""
+        <div class="info-box">
+        pdfplumber extracts text and tables directly from the PDF — <b>no API key needed</b>.
+        It detects channel numbers and names, and attempts to read DMX value ranges from tables.
+        Works best on clean text-based PDFs. Scanned/image PDFs will return raw text only.
+        </div>
+        """, unsafe_allow_html=True)
+        api_key = ""
 
     uploaded_pdf = st.file_uploader("Fixture Manual (PDF)", type=["pdf"])
 
-    if uploaded_pdf and api_key:
-        if st.button("🤖 Parse PDF with Claude", type="primary"):
-            with st.spinner("Claude is reading the manual and extracting DMX data…"):
-                try:
-                    pdf_bytes = uploaded_pdf.read()
-                    parsed = parse_pdf_with_claude(pdf_bytes, api_key)
-                    p_name, p_mfr, p_modes = parsed_dict_to_modes(parsed)
+    if uploaded_pdf:
+        if use_claude and not api_key:
+            st.markdown(
+                '<div class="warn-box">Enter your Anthropic API key above to use Claude parsing.</div>',
+                unsafe_allow_html=True
+            )
+        else:
+            btn_label = "🤖 Parse PDF with Claude" if use_claude else "📋 Extract with pdfplumber"
+            if st.button(btn_label, type="primary"):
+                pdf_bytes = uploaded_pdf.read()
 
-                    st.session_state["pdf_parsed"] = {
-                        "name": p_name,
-                        "manufacturer": p_mfr,
-                        "modes": p_modes,
-                        "raw": parsed,
-                    }
-                    st.session_state["fixture_name"] = p_name
-                    st.session_state["manufacturer"] = p_mfr
-                    st.rerun()
+                if use_claude:
+                    with st.spinner("Claude is reading the manual and extracting DMX data…"):
+                        try:
+                            parsed = parse_pdf_with_claude(pdf_bytes, api_key)
+                            p_name, p_mfr, p_modes = parsed_dict_to_modes(parsed)
+                            st.session_state["pdf_parsed"] = {
+                                "name": p_name,
+                                "manufacturer": p_mfr,
+                                "modes": p_modes,
+                                "raw": parsed,
+                                "method": "claude",
+                            }
+                            st.session_state["fixture_name"] = p_name
+                            st.session_state["manufacturer"] = p_mfr
+                            st.rerun()
+                        except json.JSONDecodeError as e:
+                            st.error(f"Claude returned non-JSON. Try again or use pdfplumber.\n\n{e}")
+                        except Exception as e:
+                            st.exception(e)
 
-                except json.JSONDecodeError as e:
-                    st.error(f"Claude returned non-JSON output. Try again or simplify the PDF.\n\n{e}")
-                except Exception as e:
-                    st.exception(e)
+                else:
+                    with st.spinner("Extracting text and tables from PDF…"):
+                        try:
+                            parsed = parse_pdf_with_pdfplumber(pdf_bytes)
 
-    elif uploaded_pdf and not api_key:
-        st.markdown(
-            '<div class="warn-box">Enter your Anthropic API key above to parse the PDF.</div>',
-            unsafe_allow_html=True
-        )
+                            # Show raw text fallback if no structure found
+                            if "_parse_warning" in parsed:
+                                st.warning(parsed["_parse_warning"])
+                                with st.expander("📄 Raw extracted text — copy channel names from here"):
+                                    st.text_area(
+                                        "Raw PDF text",
+                                        value=parsed.get("_raw_text", ""),
+                                        height=400,
+                                        help="Copy channel names from here into the Manual Entry tab."
+                                    )
+                            else:
+                                p_name, p_mfr, p_modes = parsed_dict_to_modes(parsed)
+                                st.session_state["pdf_parsed"] = {
+                                    "name": p_name,
+                                    "manufacturer": p_mfr,
+                                    "modes": p_modes,
+                                    "raw": parsed,
+                                    "method": "pdfplumber",
+                                }
+                                st.session_state["fixture_name"] = p_name
+                                st.session_state["manufacturer"] = p_mfr
+                                st.rerun()
+                        except Exception as e:
+                            st.exception(e)
 
     # ── Parsed result preview ─────────────────────────────────────────────────
     if "pdf_parsed" in st.session_state:
         p = st.session_state["pdf_parsed"]
+        method = p.get("method", "claude")
         total_slots = sum(
             len(ch.slots)
             for chs in p["modes"].values()
             for ch in chs
         )
+        method_badge = "🤖 Claude AI" if method == "claude" else "📋 pdfplumber"
         st.success(
             f"✅ **{p['name']}** by {p['manufacturer']} — "
-            f"{len(p['modes'])} mode(s) · {total_slots} total wheel slots extracted"
+            f"{len(p['modes'])} mode(s) · {total_slots} total wheel slots · parsed via {method_badge}"
         )
+
+        if method == "pdfplumber" and total_slots == 0:
+            st.markdown("""
+            <div class="warn-box">
+            <b>pdfplumber found channel names but no slot data.</b> This is normal — pdfplumber
+            can't interpret DMX value tables as reliably as Claude. The GDTF will still be valid
+            with simple 0–255 ranges per channel. To get gobo names, color slots, and strobe
+            sub-ranges on MA3 wheels, re-parse with Claude AI.
+            </div>
+            """, unsafe_allow_html=True)
 
         for mode_name, ch_defs in p["modes"].items():
             with st.expander(f"Mode: {mode_name}  ({len(ch_defs)} channels)"):
@@ -704,7 +960,7 @@ with tab_pdf:
             except Exception as e:
                 st.exception(e)
 
-    elif not uploaded_pdf:
+    elif not uploaded_pdf and "pdf_parsed" not in st.session_state:
         st.markdown("""
         <div class="card" style="text-align:center;padding:2.5rem 1rem">
           <p style="font-size:2rem;margin:0">📄</p>
