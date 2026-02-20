@@ -387,33 +387,115 @@ def parse_pdf_with_claude(pdf_bytes: bytes, api_key: str) -> dict:
     client = anthropic.Anthropic(api_key=api_key)
     b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
 
-    msg = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=8192,
-        system=PDF_SYSTEM_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": [
-                {
-                    "type": "document",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "application/pdf",
-                        "data": b64
-                    }
-                },
-                {
-                    "type": "text",
-                    "text": "Extract the complete DMX channel map from this fixture manual and return only the JSON."
+    messages = [{
+        "role": "user",
+        "content": [
+            {
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": b64
                 }
-            ]
-        }]
-    )
+            },
+            {
+                "type": "text",
+                "text": "Extract the complete DMX channel map from this fixture manual and return only the JSON."
+            }
+        ]
+    }]
 
-    raw_text = msg.content[0].text.strip()
+    # Use multi-turn continuation if response is cut off
+    full_text = ""
+    for attempt in range(3):
+        msg = client.messages.create(
+            model="claude-opus-4-6",
+            max_tokens=16000,
+            system=PDF_SYSTEM_PROMPT,
+            messages=messages,
+        )
+
+        chunk = msg.content[0].text
+        full_text += chunk
+
+        # If finished naturally, we're done
+        if msg.stop_reason == "end_turn":
+            break
+
+        # Response was cut off — ask Claude to continue from where it stopped
+        if msg.stop_reason == "max_tokens":
+            messages.append({"role": "assistant", "content": chunk})
+            messages.append({"role": "user",
+                             "content": "Continue the JSON exactly from where you stopped. "
+                                        "Do not repeat anything already written."})
+        else:
+            break
+
+    # Strip markdown fences if present
+    raw_text = full_text.strip()
     raw_text = re.sub(r'^```[a-z]*\n?', '', raw_text)
     raw_text = re.sub(r'\n?```$', '', raw_text)
-    return json.loads(raw_text)
+
+    # Attempt to repair truncated JSON by closing open structures
+    try:
+        return json.loads(raw_text)
+    except json.JSONDecodeError:
+        repaired = _repair_truncated_json(raw_text)
+        return json.loads(repaired)
+
+
+def _repair_truncated_json(text: str) -> str:
+    """
+    Best-effort repair of a truncated JSON string by closing any
+    unclosed arrays, objects, and strings.
+    """
+    # Trim to last complete-looking value boundary
+    # Remove trailing partial line
+    lines = text.splitlines()
+    while lines and not lines[-1].strip().endswith(('}', ']', '"', ',')):
+        lines.pop()
+    text = "\n".join(lines)
+
+    # Count open braces/brackets to figure out what needs closing
+    in_string = False
+    escape_next = False
+    depth_brace = 0
+    depth_bracket = 0
+
+    for ch in text:
+        if escape_next:
+            escape_next = False
+            continue
+        if ch == '\\' and in_string:
+            escape_next = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == '{':
+            depth_brace += 1
+        elif ch == '}':
+            depth_brace -= 1
+        elif ch == '[':
+            depth_bracket += 1
+        elif ch == ']':
+            depth_bracket -= 1
+
+    # If we're still inside a string, close it
+    closing = ""
+    if in_string:
+        closing += '"'
+
+    # Strip trailing comma before closing (invalid JSON)
+    text = re.sub(r',\s*$', '', text.rstrip())
+
+    # Close open arrays then objects
+    closing += ']' * max(depth_bracket, 0)
+    closing += '}' * max(depth_brace, 0)
+
+    return text + closing
 
 
 def parse_pdf_with_pdfplumber(pdf_bytes: bytes) -> dict:
