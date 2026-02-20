@@ -399,8 +399,10 @@ def build_gdtf(fixture_name: str, manufacturer: str,
 
 
 def create_gdtf_package(xml_content: str) -> bytes:
+    # GDTF spec requires ZIP_STORED (no compression) — ZIP_DEFLATED causes
+    # silent import failures in MA3 and Vectorworks
     buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_STORED) as z:
         z.writestr("description.xml", xml_content.encode("utf-8"))
     return buf.getvalue()
 
@@ -812,109 +814,203 @@ st.set_page_config(page_title="GDTF Builder", page_icon="💡", layout="wide")
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;500;600&display=swap');
+
+/* ── MA3 base colours ───────────────────────────────────────────────────── */
+:root {
+    --ma-black:    #0A0A0A;
+    --ma-panel:    #1A1A1A;
+    --ma-border:   #2E2E2E;
+    --ma-mid:      #3A3A3A;
+    --ma-amber:    #E8A000;
+    --ma-amber-dk: #A06800;
+    --ma-text:     #E0E0E0;
+    --ma-muted:    #888888;
+    --ma-green:    #00C800;
+    --ma-red:      #C80000;
+    --ma-blue:     #0078C8;
+}
 
 html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-    background: #0b0d12;
-    color: #dde1ed;
+    font-family: 'Barlow', sans-serif;
+    background: var(--ma-black);
+    color: var(--ma-text);
 }
-h1, h2, h3, h4 { font-family: 'Space Mono', monospace; letter-spacing: -0.02em; }
-.block-container { padding-top: 1.8rem; max-width: 1200px; }
+h1, h2, h3, h4 {
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.04em;
+    color: var(--ma-amber);
+}
+.block-container { padding-top: 1.6rem; max-width: 1200px; }
 
+/* ── Inputs ─────────────────────────────────────────────────────────────── */
 div[data-testid="stTextInput"] input,
-div[data-testid="stTextArea"] textarea,
-div[data-testid="stSelectbox"] select {
-    background: #13161f !important;
-    border: 1px solid #252836 !important;
-    border-radius: 6px !important;
-    color: #dde1ed !important;
-    font-family: 'DM Sans', sans-serif !important;
+div[data-testid="stTextArea"] textarea {
+    background: var(--ma-panel) !important;
+    border: 1px solid var(--ma-border) !important;
+    border-radius: 3px !important;
+    color: var(--ma-text) !important;
+    font-family: 'Share Tech Mono', monospace !important;
+    font-size: 0.88rem !important;
 }
 div[data-testid="stTextInput"] input:focus,
 div[data-testid="stTextArea"] textarea:focus {
-    border-color: #4f6ef7 !important;
-    box-shadow: 0 0 0 3px rgba(79,110,247,0.15) !important;
+    border-color: var(--ma-amber) !important;
+    box-shadow: 0 0 0 2px rgba(232,160,0,0.2) !important;
 }
 
+/* ── Labels ─────────────────────────────────────────────────────────────── */
+label, .stRadio label, div[data-testid="stWidgetLabel"] {
+    color: var(--ma-muted) !important;
+    font-size: 0.78rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* ── Primary button — MA3 amber executor style ──────────────────────────── */
 .stButton>button[kind="primary"] {
-    background: linear-gradient(135deg, #4f6ef7 0%, #9b3ff5 100%);
-    border: none; border-radius: 8px; color: #fff;
-    font-family: 'Space Mono', monospace; font-size: 0.82rem;
-    letter-spacing: 0.06em; padding: 0.6rem 1.6rem;
-    transition: opacity .2s, transform .15s;
+    background: var(--ma-amber);
+    border: 1px solid var(--ma-amber);
+    border-bottom: 2px solid var(--ma-amber-dk);
+    border-radius: 3px;
+    color: #000;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.55rem 1.5rem;
+    text-transform: uppercase;
+    transition: background .15s, border-color .15s;
 }
-.stButton>button[kind="primary"]:hover { opacity: .88; transform: translateY(-1px); }
+.stButton>button[kind="primary"]:hover {
+    background: #FFB800;
+    border-color: #FFB800;
+}
+.stButton>button[kind="primary"]:active {
+    background: var(--ma-amber-dk);
+    border-color: var(--ma-amber-dk);
+}
 
+/* ── Secondary buttons ──────────────────────────────────────────────────── */
 .stButton>button:not([kind="primary"]) {
-    background: #13161f; border: 1px solid #252836;
-    border-radius: 6px; color: #8892b0;
-    font-size: 0.8rem; padding: 0.45rem 1rem;
-    transition: border-color .2s, color .2s;
+    background: var(--ma-panel);
+    border: 1px solid var(--ma-border);
+    border-bottom: 2px solid #111;
+    border-radius: 3px;
+    color: var(--ma-muted);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: border-color .15s, color .15s;
 }
-.stButton>button:not([kind="primary"]):hover { border-color: #4f6ef7; color: #dde1ed; }
+.stButton>button:not([kind="primary"]):hover {
+    border-color: var(--ma-amber);
+    color: var(--ma-amber);
+}
 
+/* ── Tabs — MA3 pool button style ───────────────────────────────────────── */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 4px; background: #13161f;
-    border-radius: 8px; padding: 4px;
-    border: 1px solid #252836;
+    gap: 3px;
+    background: var(--ma-black);
+    border-radius: 3px;
+    padding: 3px;
+    border: 1px solid var(--ma-border);
 }
 .stTabs [data-baseweb="tab"] {
-    font-family: 'Space Mono', monospace;
-    font-size: 0.78rem; letter-spacing: 0.05em;
-    border-radius: 6px; padding: 6px 18px;
-    color: #8892b0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.76rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 2px;
+    padding: 6px 20px;
+    color: var(--ma-muted);
+    border-bottom: 2px solid transparent;
 }
 .stTabs [aria-selected="true"] {
-    background: linear-gradient(135deg, #4f6ef7, #9b3ff5) !important;
-    color: #fff !important;
+    background: var(--ma-amber) !important;
+    color: #000 !important;
+    font-weight: 700;
+    border-bottom: 2px solid var(--ma-amber-dk) !important;
 }
 
+/* ── Cards — MA3 window style ───────────────────────────────────────────── */
 .card {
-    background: #13161f;
-    border: 1px solid #252836;
-    border-radius: 10px;
-    padding: 1.1rem 1.3rem;
+    background: var(--ma-panel);
+    border: 1px solid var(--ma-border);
+    border-top: 2px solid var(--ma-amber);
+    border-radius: 3px;
+    padding: 1rem 1.2rem;
     margin-bottom: 1rem;
 }
 
+/* ── Badges ─────────────────────────────────────────────────────────────── */
 .badge {
     display: inline-block;
-    border-radius: 4px; padding: 2px 8px;
-    font-family: 'Space Mono', monospace; font-size: 0.68rem;
-    margin: 2px; border: 1px solid;
+    border-radius: 2px;
+    padding: 2px 7px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    margin: 2px;
+    border: 1px solid;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
-.b-ok   { color: #4f6ef7; border-color: #4f6ef733; background: #4f6ef710; }
-.b-fine { color: #f59e0b; border-color: #f59e0b33; background: #f59e0b10; }
-.b-slot { color: #10b981; border-color: #10b98133; background: #10b98110; }
-.b-unk  { color: #ef4444; border-color: #ef444433; background: #ef444410; }
+.b-ok   { color: var(--ma-amber);  border-color: #E8A00044; background: #E8A00015; }
+.b-fine { color: var(--ma-blue);   border-color: #0078C844; background: #0078C815; }
+.b-slot { color: var(--ma-green);  border-color: #00C80044; background: #00C80015; }
+.b-unk  { color: var(--ma-red);    border-color: #C8000044; background: #C8000015; }
 
+/* ── Slot table ─────────────────────────────────────────────────────────── */
 .slot-row {
     display: flex; gap: 8px; align-items: center;
-    padding: 4px 0; border-bottom: 1px solid #1e2133;
-    font-size: 0.8rem; font-family: 'Space Mono', monospace;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--ma-border);
+    font-size: 0.78rem;
+    font-family: 'Share Tech Mono', monospace;
 }
-.slot-dmx  { color: #f59e0b; width: 90px; flex-shrink: 0; }
-.slot-name { color: #dde1ed; flex: 1; }
-.slot-phys { color: #8892b0; width: 100px; flex-shrink: 0; }
+.slot-dmx  { color: var(--ma-amber); width: 90px; flex-shrink: 0; }
+.slot-name { color: var(--ma-text);  flex: 1; }
+.slot-phys { color: var(--ma-muted); width: 100px; flex-shrink: 0; }
 
+/* ── Info / warn boxes ──────────────────────────────────────────────────── */
 .info-box {
-    background: #0f1829; border-left: 3px solid #4f6ef7;
-    border-radius: 0 6px 6px 0; padding: 0.7rem 1rem;
-    font-size: 0.85rem; color: #8892b0; margin: 0.5rem 0;
+    background: #111;
+    border-left: 3px solid var(--ma-amber);
+    border-radius: 0 3px 3px 0;
+    padding: 0.65rem 1rem;
+    font-size: 0.82rem;
+    color: var(--ma-muted);
+    margin: 0.5rem 0;
 }
 .warn-box {
-    background: #1a1208; border-left: 3px solid #f59e0b;
-    border-radius: 0 6px 6px 0; padding: 0.7rem 1rem;
-    font-size: 0.85rem; color: #a07820; margin: 0.5rem 0;
+    background: #181000;
+    border-left: 3px solid #C86400;
+    border-radius: 0 3px 3px 0;
+    padding: 0.65rem 1rem;
+    font-size: 0.82rem;
+    color: #C86400;
+    margin: 0.5rem 0;
 }
+
+/* ── Expander headers ───────────────────────────────────────────────────── */
+details summary {
+    font-family: 'Share Tech Mono', monospace !important;
+    font-size: 0.8rem !important;
+    color: var(--ma-muted) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* ── Divider ────────────────────────────────────────────────────────────── */
+hr { border-color: var(--ma-border) !important; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("💡 GDTF Builder")
+st.title("GDTF BUILDER")
 st.markdown(
-    "<p style='color:#8892b0;font-size:0.88rem;margin-top:-0.6rem'>"
-    "GDTF 1.1 · MA3 wheels &amp; slots · PDF AI import · Vectorworks · Capture · Onyx</p>",
+    "<p style='color:#888;font-size:0.78rem;margin-top:-0.8rem;font-family:Share Tech Mono,monospace;letter-spacing:0.1em'>"
+    "GDTF 1.1 &nbsp;·&nbsp; MA3 WHEELS &amp; SLOTS &nbsp;·&nbsp; PDF AI IMPORT &nbsp;·&nbsp; VECTORWORKS &nbsp;·&nbsp; CAPTURE &nbsp;·&nbsp; ONYX</p>",
     unsafe_allow_html=True
 )
 st.divider()
@@ -1003,8 +1099,8 @@ with tab_pdf:
                                 "raw": parsed,
                                 "method": "claude",
                             }
-                            st.session_state["fixture_name"] = p_name
-                            st.session_state["manufacturer"] = p_mfr
+                            # Do NOT overwrite fixture_name / manufacturer —
+                            # the user's entries in the top boxes are always used
                             st.rerun()
                         except json.JSONDecodeError as e:
                             st.error(f"Claude returned non-JSON. Try again or use pdfplumber.\n\n{e}")
@@ -1035,8 +1131,7 @@ with tab_pdf:
                                     "raw": parsed,
                                     "method": "pdfplumber",
                                 }
-                                st.session_state["fixture_name"] = p_name
-                                st.session_state["manufacturer"] = p_mfr
+                                # Do NOT overwrite fixture_name / manufacturer
                                 st.rerun()
                         except Exception as e:
                             st.exception(e)
@@ -1051,8 +1146,11 @@ with tab_pdf:
             for ch in chs
         )
         method_badge = "🤖 Claude AI" if method == "claude" else "📋 pdfplumber"
+        # Always show the user's entered name, not what the PDF parser found
+        display_name = st.session_state.get("fixture_name", "—") or "—"
+        display_mfr  = st.session_state.get("manufacturer", "—") or "—"
         st.success(
-            f"✅ **{p['name']}** by {p['manufacturer']} — "
+            f"✅ **{display_name}** by {display_mfr} — "
             f"{len(p['modes'])} mode(s) · {total_slots} total wheel slots · parsed via {method_badge}"
         )
 
@@ -1107,9 +1205,12 @@ with tab_pdf:
         st.divider()
         if st.button("⚡ Generate .gdtf from PDF data", type="primary", key="gen_pdf"):
             try:
-                xml_data   = build_gdtf(p["name"], p["manufacturer"], p["modes"])
+                # Always use the name/manufacturer from the top-of-page inputs
+                fname = st.session_state.get("fixture_name", "").strip() or "Unknown Fixture"
+                fmfr  = st.session_state.get("manufacturer", "").strip() or "Generic"
+                xml_data   = build_gdtf(fname, fmfr, p["modes"])
                 gdtf_bytes = create_gdtf_package(xml_data)
-                safe_name  = re.sub(r'[^A-Za-z0-9_\-]', '_', p["name"])
+                safe_name  = re.sub(r'[^A-Za-z0-9_\-]', '_', fname)
 
                 st.success(f"GDTF package ready — {len(gdtf_bytes):,} bytes")
                 col_dl, col_xp = st.columns([1, 2])
@@ -1119,6 +1220,14 @@ with tab_pdf:
                         file_name=f"{safe_name}.gdtf",
                         mime="application/octet-stream"
                     )
+                    st.markdown("""
+                    <div class="info-box" style="margin-top:0.8rem;font-size:0.78rem">
+                    <b>MA3 onPC — place file at:</b><br>
+                    <code style="font-size:0.72rem">C:\\Users\\[you]\\Documents\\MA Lighting Technologies\\grandMA3\\gma3_library\\fixturetypes\\</code><br><br>
+                    Then in MA3: <b>Menu → Patch → Fixture Types → Import</b><br>
+                    Look under the <b>User</b> tab, not grandMA3 tab.
+                    </div>
+                    """, unsafe_allow_html=True)
                 with col_xp:
                     with st.expander("View description.xml"):
                         st.code(xml_data, language="xml")
@@ -1232,6 +1341,13 @@ with tab_manual:
                         file_name=f"{fname.replace(' ', '_')}.gdtf",
                         mime="application/octet-stream"
                     )
+                    st.markdown("""
+                    <div class="info-box" style="margin-top:0.8rem;font-size:0.78rem">
+                    <b>MA3 onPC — place file at:</b><br>
+                    <code style="font-size:0.72rem">C:\\Users\\[you]\\Documents\\MA Lighting Technologies\\grandMA3\\gma3_library\\fixturetypes\\</code><br><br>
+                    Then: <b>Menu → Patch → Fixture Types → Import → User tab</b>
+                    </div>
+                    """, unsafe_allow_html=True)
                 with col_xp:
                     with st.expander("View description.xml"):
                         st.code(xml_data, language="xml")
