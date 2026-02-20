@@ -850,12 +850,13 @@ st.markdown("""
 :root {
     --ma-black:    #0A0A0A;
     --ma-panel:    #1A1A1A;
-    --ma-border:   #2E2E2E;
-    --ma-mid:      #3A3A3A;
+    --ma-border:   #3A3A3A;
+    --ma-mid:      #4A4A4A;
     --ma-amber:    #E8A000;
     --ma-amber-dk: #A06800;
-    --ma-text:     #E0E0E0;
-    --ma-muted:    #888888;
+    --ma-text:     #EBEBEB;
+    --ma-muted:    #AAAAAA;
+    --ma-subtle:   #777777;
     --ma-green:    #00C800;
     --ma-red:      #C80000;
     --ma-blue:     #0078C8;
@@ -891,7 +892,7 @@ div[data-testid="stTextArea"] textarea:focus {
 
 /* ── Labels ─────────────────────────────────────────────────────────────── */
 label, .stRadio label, div[data-testid="stWidgetLabel"] {
-    color: var(--ma-muted) !important;
+    color: #BBBBBB !important;
     font-size: 0.78rem !important;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -927,7 +928,7 @@ label, .stRadio label, div[data-testid="stWidgetLabel"] {
     border: 1px solid var(--ma-border);
     border-bottom: 2px solid #111;
     border-radius: 3px;
-    color: var(--ma-muted);
+    color: #CCCCCC;
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.78rem;
     letter-spacing: 0.05em;
@@ -954,7 +955,7 @@ label, .stRadio label, div[data-testid="stWidgetLabel"] {
     text-transform: uppercase;
     border-radius: 2px;
     padding: 6px 20px;
-    color: var(--ma-muted);
+    color: #BBBBBB;
     border-bottom: 2px solid transparent;
 }
 .stTabs [aria-selected="true"] {
@@ -986,10 +987,10 @@ label, .stRadio label, div[data-testid="stWidgetLabel"] {
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
-.b-ok   { color: var(--ma-amber);  border-color: #E8A00044; background: #E8A00015; }
-.b-fine { color: var(--ma-blue);   border-color: #0078C844; background: #0078C815; }
-.b-slot { color: var(--ma-green);  border-color: #00C80044; background: #00C80015; }
-.b-unk  { color: var(--ma-red);    border-color: #C8000044; background: #C8000015; }
+.b-ok   { color: var(--ma-amber);  border-color: #E8A00066; background: #E8A00020; }
+.b-fine { color: #4AB0FF;          border-color: #4AB0FF66; background: #4AB0FF20; }
+.b-slot { color: #00E000;          border-color: #00E00066; background: #00E00020; }
+.b-unk  { color: #FF5555;          border-color: #FF555566; background: #FF555520; }
 
 /* ── Slot table ─────────────────────────────────────────────────────────── */
 .slot-row {
@@ -1000,26 +1001,26 @@ label, .stRadio label, div[data-testid="stWidgetLabel"] {
     font-family: 'Share Tech Mono', monospace;
 }
 .slot-dmx  { color: var(--ma-amber); width: 90px; flex-shrink: 0; }
-.slot-name { color: var(--ma-text);  flex: 1; }
-.slot-phys { color: var(--ma-muted); width: 100px; flex-shrink: 0; }
+.slot-name { color: #DDDDDD;         flex: 1; }
+.slot-phys { color: #AAAAAA;         width: 100px; flex-shrink: 0; }
 
 /* ── Info / warn boxes ──────────────────────────────────────────────────── */
 .info-box {
-    background: #111;
+    background: #141414;
     border-left: 3px solid var(--ma-amber);
     border-radius: 0 3px 3px 0;
     padding: 0.65rem 1rem;
     font-size: 0.82rem;
-    color: var(--ma-muted);
+    color: #BBBBBB;
     margin: 0.5rem 0;
 }
 .warn-box {
-    background: #181000;
-    border-left: 3px solid #C86400;
+    background: #1A1200;
+    border-left: 3px solid #D07000;
     border-radius: 0 3px 3px 0;
     padding: 0.65rem 1rem;
     font-size: 0.82rem;
-    color: #C86400;
+    color: #D09040;
     margin: 0.5rem 0;
 }
 
@@ -1027,19 +1028,33 @@ label, .stRadio label, div[data-testid="stWidgetLabel"] {
 details summary {
     font-family: 'Share Tech Mono', monospace !important;
     font-size: 0.8rem !important;
-    color: var(--ma-muted) !important;
+    color: #BBBBBB !important;
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
+details summary:hover { color: var(--ma-amber) !important; }
+
+/* ── Number inputs ──────────────────────────────────────────────────────── */
+div[data-testid="stNumberInput"] input {
+    background: var(--ma-panel) !important;
+    border: 1px solid var(--ma-border) !important;
+    color: #EBEBEB !important;
+    font-family: 'Share Tech Mono', monospace !important;
+}
+
+/* ── Streamlit success / error / warning alerts ─────────────────────────── */
+div[data-testid="stAlert"] {
+    border-radius: 3px !important;
+}
 
 /* ── Divider ────────────────────────────────────────────────────────────── */
-hr { border-color: var(--ma-border) !important; }
+hr { border-color: #3A3A3A !important; }
 </style>
 """, unsafe_allow_html=True)
 
 st.title("GDTF BUILDER")
 st.markdown(
-    "<p style='color:#888;font-size:0.78rem;margin-top:-0.8rem;font-family:Share Tech Mono,monospace;letter-spacing:0.1em'>"
+    "<p style='color:#BBBBBB;font-size:0.78rem;margin-top:-0.8rem;font-family:Share Tech Mono,monospace;letter-spacing:0.1em'>"
     "GDTF 1.1 &nbsp;·&nbsp; MA3 WHEELS &amp; SLOTS &nbsp;·&nbsp; PDF AI IMPORT &nbsp;·&nbsp; VECTORWORKS &nbsp;·&nbsp; CAPTURE &nbsp;·&nbsp; ONYX</p>",
     unsafe_allow_html=True
 )
@@ -1268,8 +1283,8 @@ with tab_pdf:
         st.markdown("""
         <div class="card" style="text-align:center;padding:2.5rem 1rem">
           <p style="font-size:2rem;margin:0">📄</p>
-          <p style="color:#8892b0;margin:0.4rem 0 0">Upload a PDF fixture manual above to get started.</p>
-          <p style="color:#3d4460;font-size:0.78rem;margin-top:0.4rem">
+          <p style="color:#AAAAAA;margin:0.4rem 0 0">Upload a PDF fixture manual above to get started.</p>
+          <p style="color:#999999;font-size:0.78rem;margin-top:0.4rem">
             Works best with text-based PDFs from manufacturers like Robe, Martin, ETC, Ayrton, GLP.
           </p>
         </div>
@@ -1497,7 +1512,7 @@ with tab_manual:
         # ── LEFT: Channel Picker ──────────────────────────────────────────────
         with left_col:
             st.markdown(
-                '<p style="color:var(--ma-muted);font-family:Share Tech Mono,monospace;'
+                '<p style="color:#BBBBBB;font-family:Share Tech Mono,monospace;'
                 'font-size:0.72rem;letter-spacing:0.1em;margin-bottom:0.4rem">'
                 'CHANNEL PICKER</p>',
                 unsafe_allow_html=True
@@ -1527,7 +1542,7 @@ with tab_manual:
 
             # Custom channel input
             st.markdown(
-                '<p style="color:var(--ma-muted);font-family:Share Tech Mono,monospace;'
+                '<p style="color:#BBBBBB;font-family:Share Tech Mono,monospace;'
                 'font-size:0.68rem;letter-spacing:0.1em;margin:0.8rem 0 0.3rem">'
                 'CUSTOM CHANNEL</p>',
                 unsafe_allow_html=True
@@ -1551,7 +1566,7 @@ with tab_manual:
         # ── RIGHT: Channel List ───────────────────────────────────────────────
         with right_col:
             st.markdown(
-                '<p style="color:var(--ma-muted);font-family:Share Tech Mono,monospace;'
+                '<p style="color:#BBBBBB;font-family:Share Tech Mono,monospace;'
                 'font-size:0.72rem;letter-spacing:0.1em;margin-bottom:0.4rem">'
                 'CHANNEL LIST — DMX ORDER</p>',
                 unsafe_allow_html=True
@@ -1559,7 +1574,7 @@ with tab_manual:
 
             if not ch_list:
                 st.markdown(
-                    '<p style="color:var(--ma-muted);font-size:0.82rem">'
+                    '<p style="color:#BBBBBB;font-size:0.82rem">'
                     'No channels yet — use the picker on the left.</p>',
                     unsafe_allow_html=True
                 )
@@ -1814,6 +1829,6 @@ with st.expander("📖 Supported Channel Names"):
             for raw, (attr, *_) in items[i * chunk:(i + 1) * chunk]:
                 st.markdown(
                     f'<span class="badge b-ok">{raw}</span>'
-                    f'<span style="color:#3d4460;font-size:0.72rem"> → {attr}</span>',
+                    f'<span style="color:#999999;font-size:0.72rem"> → {attr}</span>',
                     unsafe_allow_html=True
                 )
