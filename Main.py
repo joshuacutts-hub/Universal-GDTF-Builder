@@ -877,168 +877,168 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                 unsafe_allow_html=True
             )
 
-            for ci, ch in enumerate(ch_list):
-                ch_id = ch["id"]
-                attr, *_ = resolve_attr(ch["name"])
-                known = any(k in ch["name"].lower() for k in ATTR_MAP)
-                fine  = ch.get("is_fine", False)
-    
-                badge = (
-                    '<span class="badge b-fine">FINE</span>'
-                    if fine else
-                    f'<span class="badge {"b-ok" if known else "b-unk"}">{attr}</span>'
+        for ci, ch in enumerate(ch_list):
+            ch_id = ch["id"]
+            attr, *_ = resolve_attr(ch["name"])
+            known = any(k in ch["name"].lower() for k in ATTR_MAP)
+            fine  = ch.get("is_fine", False)
+
+            badge = (
+                '<span class="badge b-fine">FINE</span>'
+                if fine else
+                f'<span class="badge {"b-ok" if known else "b-unk"}">{attr}</span>'
+            )
+
+            # ── Channel row: number | name | badge | ▲ | ▼ | ✕ ──────────────────
+            # Use stable ch_id in widget key so moves don't corrupt input values
+            r1, r2, r3, r4, r5, r6 = st.columns([0.4, 2.5, 1.2, 0.35, 0.35, 0.35])
+
+            with r1:
+                st.markdown(
+                    f'<p class="ch-num">{ci+1}</p>',
+                    unsafe_allow_html=True
                 )
-    
-                # ── Channel row: number | name | badge | ▲ | ▼ | ✕ ──────────────────
-                # Use stable ch_id in widget key so moves don't corrupt input values
-                r1, r2, r3, r4, r5, r6 = st.columns([0.4, 2.5, 1.2, 0.35, 0.35, 0.35])
-    
-                with r1:
-                    st.markdown(
-                        f'<p class="ch-num">{ci+1}</p>',
-                        unsafe_allow_html=True
-                    )
-                with r2:
-                    # Key uses stable channel ID — so after a swap the widget
-                    # renders with the correct stored name, not the old position's value
-                    new_name = st.text_input(
-                        "ch", value=ch["name"],
-                        label_visibility="collapsed",
-                        key=f"chname_{ch_id}"
-                    )
-                    if new_name != ch["name"]:
-                        ch["name"] = new_name
-                with r3:
-                    st.markdown(
-                        f'<div style="margin-top:0.5rem">{badge}</div>',
-                        unsafe_allow_html=True
-                    )
-                with r4:
-                    if st.button("▲", key=f"up_{ch_id}",
-                                 disabled=ci == 0, help="Move up"):
-                        ch_to_move = (ci, -1)
-                with r5:
-                    if st.button("▼", key=f"dn_{ch_id}",
-                                 disabled=ci == len(ch_list)-1,
-                                 help="Move down"):
-                        ch_to_move = (ci, 1)
-                with r6:
-                    if st.button("✕", key=f"del_{ch_id}",
-                                 help="Remove channel"):
-                        ch_to_delete = ci
-    
-                # ── DMX Slot / Channel Set Editor ────────────────────────────────────
-                show_slots = (
-                    not fine and
-                    ch["name"] not in CONTINUOUS and
-                    known
+            with r2:
+                # Key uses stable channel ID — so after a swap the widget
+                # renders with the correct stored name, not the old position's value
+                new_name = st.text_input(
+                    "ch", value=ch["name"],
+                    label_visibility="collapsed",
+                    key=f"chname_{ch_id}"
                 )
-    
-                if show_slots:
-                    slots = ch.setdefault("slots", [])
-                    n     = len(slots)
-                    label = (
-                        f"  ↳ {n} channel set{'s' if n != 1 else ''} "
-                        f"(MA3 snap positions) — tap to edit"
-                        if n > 0 else
-                        "  ↳ No channel sets — tap to add (optional)"
-                    )
-                    with st.expander(label, expanded=n > 0):
-                        # Column headers
-                        if slots:
-                            hh1, hh2, hh3, hh4 = st.columns([1,1,2,0.4])
-                            with hh1:
-                                st.markdown(
-                                    '<p style="color:#888;font-size:0.68rem;'
-                                    'font-family:Share Tech Mono,monospace;'
-                                    'text-transform:uppercase;letter-spacing:0.06em;'
-                                    'margin-bottom:0.2rem">FROM</p>',
-                                    unsafe_allow_html=True
-                                )
-                            with hh2:
-                                st.markdown(
-                                    '<p style="color:#888;font-size:0.68rem;'
-                                    'font-family:Share Tech Mono,monospace;'
-                                    'text-transform:uppercase;letter-spacing:0.06em;'
-                                    'margin-bottom:0.2rem">TO</p>',
-                                    unsafe_allow_html=True
-                                )
-                            with hh3:
-                                st.markdown(
-                                    '<p style="color:#888;font-size:0.68rem;'
-                                    'font-family:Share Tech Mono,monospace;'
-                                    'text-transform:uppercase;letter-spacing:0.06em;'
-                                    'margin-bottom:0.2rem">LABEL (MA3 CHANNEL SET NAME)</p>',
-                                    unsafe_allow_html=True
-                                )
-    
-                        slot_to_delete = None
-                        for si, slot in enumerate(slots):
-                            sc1, sc2, sc3, sc4 = st.columns([1,1,2,0.4])
-                            with sc1:
-                                slot["dmx_from"] = st.number_input(
-                                    "From", min_value=0, max_value=255,
-                                    value=int(slot["dmx_from"]),
-                                    key=f"sf_{ch_id}_{si}",
-                                    label_visibility="collapsed"
-                                )
-                            with sc2:
-                                slot["dmx_to"] = st.number_input(
-                                    "To", min_value=0, max_value=255,
-                                    value=int(slot["dmx_to"]),
-                                    key=f"st_{ch_id}_{si}",
-                                    label_visibility="collapsed"
-                                )
-                            with sc3:
-                                slot["name"] = st.text_input(
-                                    "Label", value=slot["name"],
-                                    placeholder="e.g. Open / Gobo 3 / Slow CW",
-                                    key=f"sn_{ch_id}_{si}",
-                                    label_visibility="collapsed"
-                                )
-                            with sc4:
-                                if st.button("✕", key=f"sdel_{ch_id}_{si}"):
-                                    slot_to_delete = si
-    
-                        if slot_to_delete is not None:
-                            slots.pop(slot_to_delete)
-                            st.rerun()
-    
-                        # Add slot button with auto-suggested next value
-                        next_from = slots[-1]["dmx_to"] + 1 if slots else 0
-                        next_to   = min(next_from + 10, 255)
-                        if st.button(
-                            f"＋ Add channel set  (next: {next_from} – {next_to})",
-                            key=f"sadd_{ch_id}",
-                            use_container_width=True
-                        ):
-                            slots.append(make_slot_entry(next_from, next_to, ""))
-                            st.rerun()
-    
-                        # Quick-fill preset
-                        preset_match = next(
-                            (v for k, v in PRESETS.items()
-                             if k.lower() in ch["name"].lower()), None
-                        )
-                        if preset_match and not slots:
-                            if st.button(
-                                "⚡ Quick-fill standard channel sets",
-                                key=f"preset_{ch_id}",
-                                use_container_width=True
-                            ):
-                                for pf, pt, pn in preset_match:
-                                    slots.append(make_slot_entry(pf, pt, pn))
-                                st.rerun()
-    
-                        if slots:
+                if new_name != ch["name"]:
+                    ch["name"] = new_name
+            with r3:
+                st.markdown(
+                    f'<div style="margin-top:0.5rem">{badge}</div>',
+                    unsafe_allow_html=True
+                )
+            with r4:
+                if st.button("▲", key=f"up_{ch_id}",
+                             disabled=ci == 0, help="Move up"):
+                    ch_to_move = (ci, -1)
+            with r5:
+                if st.button("▼", key=f"dn_{ch_id}",
+                             disabled=ci == len(ch_list)-1,
+                             help="Move down"):
+                    ch_to_move = (ci, 1)
+            with r6:
+                if st.button("✕", key=f"del_{ch_id}",
+                             help="Remove channel"):
+                    ch_to_delete = ci
+
+            # ── DMX Slot / Channel Set Editor ────────────────────────────────────
+            show_slots = (
+                not fine and
+                ch["name"] not in CONTINUOUS and
+                known
+            )
+
+            if show_slots:
+                slots = ch.setdefault("slots", [])
+                n     = len(slots)
+                label = (
+                    f"  ↳ {n} channel set{'s' if n != 1 else ''} "
+                    f"(MA3 snap positions) — tap to edit"
+                    if n > 0 else
+                    "  ↳ No channel sets — tap to add (optional)"
+                )
+                with st.expander(label, expanded=n > 0):
+                    # Column headers
+                    if slots:
+                        hh1, hh2, hh3, hh4 = st.columns([1,1,2,0.4])
+                        with hh1:
                             st.markdown(
-                                '<p style="color:#777;font-size:0.72rem;'
-                                'font-family:Share Tech Mono,monospace;margin-top:0.4rem">'
-                                '⟶ These will appear as named snap positions on MA3 '
-                                'encoders and in the fixture sheet channel sets column.</p>',
+                                '<p style="color:#888;font-size:0.68rem;'
+                                'font-family:Share Tech Mono,monospace;'
+                                'text-transform:uppercase;letter-spacing:0.06em;'
+                                'margin-bottom:0.2rem">FROM</p>',
                                 unsafe_allow_html=True
                             )
-    
+                        with hh2:
+                            st.markdown(
+                                '<p style="color:#888;font-size:0.68rem;'
+                                'font-family:Share Tech Mono,monospace;'
+                                'text-transform:uppercase;letter-spacing:0.06em;'
+                                'margin-bottom:0.2rem">TO</p>',
+                                unsafe_allow_html=True
+                            )
+                        with hh3:
+                            st.markdown(
+                                '<p style="color:#888;font-size:0.68rem;'
+                                'font-family:Share Tech Mono,monospace;'
+                                'text-transform:uppercase;letter-spacing:0.06em;'
+                                'margin-bottom:0.2rem">LABEL (MA3 CHANNEL SET NAME)</p>',
+                                unsafe_allow_html=True
+                            )
+
+                    slot_to_delete = None
+                    for si, slot in enumerate(slots):
+                        sc1, sc2, sc3, sc4 = st.columns([1,1,2,0.4])
+                        with sc1:
+                            slot["dmx_from"] = st.number_input(
+                                "From", min_value=0, max_value=255,
+                                value=int(slot["dmx_from"]),
+                                key=f"sf_{ch_id}_{si}",
+                                label_visibility="collapsed"
+                            )
+                        with sc2:
+                            slot["dmx_to"] = st.number_input(
+                                "To", min_value=0, max_value=255,
+                                value=int(slot["dmx_to"]),
+                                key=f"st_{ch_id}_{si}",
+                                label_visibility="collapsed"
+                            )
+                        with sc3:
+                            slot["name"] = st.text_input(
+                                "Label", value=slot["name"],
+                                placeholder="e.g. Open / Gobo 3 / Slow CW",
+                                key=f"sn_{ch_id}_{si}",
+                                label_visibility="collapsed"
+                            )
+                        with sc4:
+                            if st.button("✕", key=f"sdel_{ch_id}_{si}"):
+                                slot_to_delete = si
+
+                    if slot_to_delete is not None:
+                        slots.pop(slot_to_delete)
+                        st.rerun()
+
+                    # Add slot button with auto-suggested next value
+                    next_from = slots[-1]["dmx_to"] + 1 if slots else 0
+                    next_to   = min(next_from + 10, 255)
+                    if st.button(
+                        f"＋ Add channel set  (next: {next_from} – {next_to})",
+                        key=f"sadd_{ch_id}",
+                        use_container_width=True
+                    ):
+                        slots.append(make_slot_entry(next_from, next_to, ""))
+                        st.rerun()
+
+                    # Quick-fill preset
+                    preset_match = next(
+                        (v for k, v in PRESETS.items()
+                         if k.lower() in ch["name"].lower()), None
+                    )
+                    if preset_match and not slots:
+                        if st.button(
+                            "⚡ Quick-fill standard channel sets",
+                            key=f"preset_{ch_id}",
+                            use_container_width=True
+                        ):
+                            for pf, pt, pn in preset_match:
+                                slots.append(make_slot_entry(pf, pt, pn))
+                            st.rerun()
+
+                    if slots:
+                        st.markdown(
+                            '<p style="color:#777;font-size:0.72rem;'
+                            'font-family:Share Tech Mono,monospace;margin-top:0.4rem">'
+                            '⟶ These will appear as named snap positions on MA3 '
+                            'encoders and in the fixture sheet channel sets column.</p>',
+                            unsafe_allow_html=True
+                        )
+
     # Apply moves and deletes after full render to avoid index confusion
     if ch_to_delete is not None:
         ch_list.pop(ch_to_delete)
