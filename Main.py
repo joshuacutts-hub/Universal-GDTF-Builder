@@ -737,7 +737,9 @@ with col_header_left:
         unsafe_allow_html=True
     )
 with col_header_right:
+    st.markdown('<div style="margin-top: 1.5rem;">', unsafe_allow_html=True)
     st.image("NCET_white_with_strip.png", use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 st.divider()
 
 # ── Fixture metadata ──────────────────────────────────────────────────────────
