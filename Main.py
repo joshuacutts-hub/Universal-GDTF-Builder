@@ -726,14 +726,18 @@ hr { border-color:#3A3A3A !important; }
 #  HEADER
 # ══════════════════════════════════════════════════════════════════════════════
 
-st.title("GDTF BUILDER")
-st.markdown(
-    "<p style='color:#BBBBBB;font-size:0.75rem;margin-top:-0.8rem;"
-    "font-family:Share Tech Mono,monospace;letter-spacing:0.1em'>"
-    "GDTF 1.1 &nbsp;·&nbsp; MA3 CHANNEL SETS &amp; WHEELS &nbsp;·&nbsp; "
-    "VECTORWORKS &nbsp;·&nbsp; CAPTURE &nbsp;·&nbsp; ONYX</p>",
-    unsafe_allow_html=True
-)
+col_header_left, col_header_right = st.columns([3, 1])
+with col_header_left:
+    st.title("GDTF BUILDER")
+    st.markdown(
+        "<p style='color:#BBBBBB;font-size:0.75rem;margin-top:-0.8rem;"
+        "font-family:Share Tech Mono,monospace;letter-spacing:0.1em'>"
+        "GDTF 1.1 &nbsp;·&nbsp; MA3 CHANNEL SETS &amp; WHEELS &nbsp;·&nbsp; "
+        "VECTORWORKS &nbsp;·&nbsp; CAPTURE &nbsp;·&nbsp; ONYX</p>",
+        unsafe_allow_html=True
+    )
+with col_header_right:
+    st.image("NCET_white_with_strip.png", use_container_width=True)
 st.divider()
 
 # ── Fixture metadata ──────────────────────────────────────────────────────────
