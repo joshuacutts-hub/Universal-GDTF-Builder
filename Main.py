@@ -972,7 +972,7 @@ for mode_idx, mode in enumerate(st.session_state.modes):
             )
 
             # ── Channel row: CH# | name | badge | default | highlight | ▲ | ▼ | ✕ ──
-            r1, r2, r3, r4, r5, r6, r7, r8 = st.columns([0.5, 2.2, 1.0, 0.6, 0.6, 0.3, 0.3, 0.3])
+            r1, r2, r3, r4, r5, r6, r7, r8 = st.columns([0.5, 2.0, 1.0, 0.6, 1.2, 0.3, 0.3, 0.3])
 
             with r1:
                 st.markdown(
