@@ -215,12 +215,12 @@ class ChannelSlot:
         self.slot_name     = slot_name or name
 
 class ChannelDef:
-    def __init__(self, name, is_fine_byte=False, slots=None, default=0, highlight=255):
+    def __init__(self, name, is_fine_byte=False, slots=None, default=0, highlight=None):
         self.name         = name
         self.is_fine_byte = is_fine_byte
         self.slots        = slots or []
         self.default      = default
-        self.highlight    = highlight
+        self.highlight    = highlight  # Can be None to exclude from highlight
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -259,7 +259,69 @@ def _guid():
 def _new_channel_id():
     return uuid.uuid4().hex[:8]
 
-def make_channel_entry(name, fine=False, default=0, highlight=255):
+def get_smart_defaults(channel_name):
+    """
+    Returns (default_value, highlight_value) based on channel type.
+    Returns None for highlight when channel shouldn't respond to highlight button.
+    """
+    name_lower = channel_name.lower()
+    
+    # Dimmer/Intensity - 0 to full
+    if any(x in name_lower for x in ["dimmer", "intensity", "master"]):
+        return (0, 255)
+    
+    # RGB/RGBW/RGBAL colors - full output for white
+    if any(x in name_lower for x in ["red", "green", "blue", "white", "amber", "lime", "uv", "indigo"]):
+        return (255, 255)
+    
+    # CMY - inverse, 0 for white
+    if any(x in name_lower for x in ["cyan", "magenta", "yellow"]):
+        return (0, 0)
+    
+    # Pan/Tilt - center position, no highlight (None)
+    if any(x in name_lower for x in ["pan", "tilt"]) and "speed" not in name_lower and "rotate" not in name_lower:
+        return (128, None)
+    
+    # Color wheels, gobos, effects - open/off position
+    if any(x in name_lower for x in ["color", "colour", "gobo", "prism", "effect", "animation", "macro", "scene", "program"]):
+        return (0, None)
+    
+    # Shutter/Strobe - closed
+    if any(x in name_lower for x in ["shutter", "strobe"]):
+        return (0, None)
+    
+    # Zoom, Focus, Iris - mid-range or specific position, no highlight
+    if any(x in name_lower for x in ["zoom", "focus", "iris", "frost"]):
+        return (128, None)
+    
+    # CTO/CTB - no correction
+    if any(x in name_lower for x in ["cto", "ctb"]):
+        return (0, None)
+    
+    # Speed/rotation channels - stopped
+    if any(x in name_lower for x in ["speed", "rotate", "spin"]):
+        return (0, None)
+    
+    # Blade/Shaper channels - open/retracted
+    if any(x in name_lower for x in ["blade", "shaper"]):
+        return (0, None)
+    
+    # Control/function channels - no function
+    if any(x in name_lower for x in ["control", "function", "reset", "lamp", "fans"]):
+        return (0, None)
+    
+    # Default fallback
+    return (0, None)
+
+def make_channel_entry(name, fine=False, default=None, highlight=None):
+    # Get smart defaults if not provided
+    if default is None or highlight is None:
+        smart_default, smart_highlight = get_smart_defaults(name)
+        if default is None:
+            default = smart_default
+        if highlight is None:
+            highlight = smart_highlight
+    
     return {"id": _new_channel_id(), "name": name,
             "is_fine": fine, "slots": [], 
             "default": default, "highlight": highlight}
@@ -282,12 +344,15 @@ def channel_defs_from_mode(mode):
             for s in ch.get("slots", [])
             if s.get("name", "").strip()
         ]
+        # Get highlight value - can be None
+        highlight_val = ch.get("highlight")
+        
         defs.append(ChannelDef(
             name=ch["name"],
             is_fine_byte=ch.get("is_fine", False),
             slots=slots,
             default=ch.get("default", 0),
-            highlight=ch.get("highlight", 255),
+            highlight=highlight_val,  # Can be None
         ))
     return defs
 
@@ -426,10 +491,13 @@ def build_gdtf(fixture_name, manufacturer, modes_dict):
                 # The single CF spans 0-255, name = attribute name
                 cf_name    = attr
                 initial_fn = f"{safe_mode}.{safe_ch}.{attr}.{cf_name}"
+                
+                # Set highlight - use "None" if highlight is None
+                highlight_str = "None" if ch.highlight is None else f"{ch.highlight}/1"
 
                 ch_el = ET.SubElement(chs_el, "DMXChannel",
                     DMXBreak="1", Offset=str(offset),
-                    Default=f"{ch.default}/1", Highlight=f"{ch.highlight}/1",
+                    Default=f"{ch.default}/1", Highlight=highlight_str,
                     Geometry="Body", InitialFunction=initial_fn)
 
                 log_el = ET.SubElement(ch_el, "LogicalChannel",
@@ -471,10 +539,13 @@ def build_gdtf(fixture_name, manufacturer, modes_dict):
                 # ── Continuous channel ───────────────────────────────────────
                 cf_name    = attr
                 initial_fn = f"{safe_mode}.{safe_ch}.{attr}.{cf_name}"
+                
+                # Set highlight - use "None" if highlight is None
+                highlight_str = "None" if ch.highlight is None else f"{ch.highlight}/1"
 
                 ch_el = ET.SubElement(chs_el, "DMXChannel",
                     DMXBreak="1", Offset=str(offset),
-                    Default=f"{ch.default}/1", Highlight=f"{ch.highlight}/1",
+                    Default=f"{ch.default}/1", Highlight=highlight_str,
                     Geometry="Body", InitialFunction=initial_fn)
 
                 log_el = ET.SubElement(ch_el, "LogicalChannel",
@@ -955,19 +1026,47 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                     'letter-spacing:0.05em;margin-bottom:-0.5rem">HIGHLIGHT</p>',
                     unsafe_allow_html=True
                 )
-                # Highlight value input
-                highlight_val = ch.get("highlight", 255)
-                new_highlight = st.number_input(
-                    "Highlight",
-                    min_value=0,
-                    max_value=255,
-                    value=highlight_val,
-                    label_visibility="collapsed",
-                    key=f"highlight_{ch_id}",
-                    help="Highlight DMX value"
-                )
-                if new_highlight != highlight_val:
-                    ch["highlight"] = new_highlight
+                # Highlight value input - can be None or 0-255
+                highlight_val = ch.get("highlight")
+                
+                # Use selectbox to choose between "None" and numeric value
+                if highlight_val is None:
+                    highlight_option = "None"
+                    display_val = 255
+                else:
+                    highlight_option = "Value"
+                    display_val = highlight_val
+                
+                hc1, hc2 = st.columns([1, 1.2])
+                with hc1:
+                    hl_choice = st.selectbox(
+                        "HL Type",
+                        options=["None", "Value"],
+                        index=0 if highlight_option == "None" else 1,
+                        label_visibility="collapsed",
+                        key=f"hltype_{ch_id}",
+                        help="None = exclude from highlight"
+                    )
+                with hc2:
+                    if hl_choice == "Value":
+                        new_highlight = st.number_input(
+                            "Highlight",
+                            min_value=0,
+                            max_value=255,
+                            value=display_val if highlight_val is not None else 255,
+                            label_visibility="collapsed",
+                            key=f"highlight_{ch_id}",
+                            help="Highlight DMX value"
+                        )
+                        if ch.get("highlight") != new_highlight:
+                            ch["highlight"] = new_highlight
+                    else:
+                        st.markdown(
+                            '<p style="color:#666;font-size:0.75rem;margin-top:0.6rem;text-align:center">—</p>',
+                            unsafe_allow_html=True
+                        )
+                        if ch.get("highlight") is not None:
+                            ch["highlight"] = None
                     
             with r6:
                 if st.button("▲", key=f"up_{ch_id}",
@@ -1107,51 +1206,42 @@ for mode_idx, mode in enumerate(st.session_state.modes):
         st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
-    #  BULK REORDER TOOL (for quickly reordering multiple channels)
+    #  MOVE CHANNEL TO POSITION (simple reorder tool)
     # ══════════════════════════════════════════════════════════════════════════
     if ch_list and len(ch_list) > 1:
-        with st.expander("🔄 REORDER CHANNELS — Enter new order"):
-            st.markdown(
-                '<p style="color:#BBBBBB;font-size:0.75rem;margin-bottom:0.5rem">'
-                'Enter channel numbers separated by commas (e.g., "1,3,2,4" to swap channels 2 and 3)</p>',
-                unsafe_allow_html=True
-            )
+        with st.expander("🔄 MOVE CHANNEL TO NEW POSITION"):
+            mc1, mc2, mc3 = st.columns([2, 2, 1])
             
-            # Show current order
-            current_order = ", ".join([f"{i+1}:{ch['name']}" for i, ch in enumerate(ch_list)])
-            st.markdown(
-                f'<p style="color:#888;font-size:0.7rem;font-family:Share Tech Mono,monospace">'
-                f'Current: {current_order}</p>',
-                unsafe_allow_html=True
-            )
-            
-            rc1, rc2 = st.columns([4, 1])
-            with rc1:
-                new_order_str = st.text_input(
-                    "New order",
-                    placeholder=f"e.g., {','.join(str(i+1) for i in range(len(ch_list)))}",
-                    key=f"reorder_input_{mode_idx}",
-                    label_visibility="collapsed"
+            with mc1:
+                # Select which channel to move
+                ch_options = [f"Ch {i+1}: {ch['name']}" for i, ch in enumerate(ch_list)]
+                selected_ch = st.selectbox(
+                    "Move this channel:",
+                    options=range(len(ch_list)),
+                    format_func=lambda i: ch_options[i],
+                    key=f"move_from_{mode_idx}"
                 )
-            with rc2:
-                if st.button("Apply", key=f"apply_reorder_{mode_idx}", use_container_width=True):
-                    try:
-                        # Parse the input
-                        new_order = [int(x.strip()) - 1 for x in new_order_str.split(",")]
-                        
-                        # Validate
-                        if len(new_order) != len(ch_list):
-                            st.error(f"❌ Must specify {len(ch_list)} positions")
-                        elif set(new_order) != set(range(len(ch_list))):
-                            st.error("❌ Must use each position exactly once")
-                        else:
-                            # Reorder the list
-                            new_ch_list = [ch_list[i] for i in new_order]
-                            mode["channel_list"] = new_ch_list
-                            st.success("✅ Channels reordered!")
-                            st.rerun()
-                    except (ValueError, IndexError):
-                        st.error("❌ Invalid format. Use numbers 1 to " + str(len(ch_list)) + " separated by commas")
+            
+            with mc2:
+                # Select where to move it
+                position_options = [f"Position {i+1}" for i in range(len(ch_list))]
+                selected_pos = st.selectbox(
+                    "To this position:",
+                    options=range(len(ch_list)),
+                    format_func=lambda i: position_options[i],
+                    key=f"move_to_{mode_idx}",
+                    index=selected_ch if selected_ch is not None else 0
+                )
+            
+            with mc3:
+                st.write("")  # Spacing
+                if st.button("Move", key=f"do_move_{mode_idx}", use_container_width=True):
+                    if selected_ch != selected_pos:
+                        # Remove from old position and insert at new position
+                        channel = ch_list.pop(selected_ch)
+                        ch_list.insert(selected_pos, channel)
+                        st.success(f"✅ Moved!")
+                        st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
     #  CHANNEL PICKER  (below list, collapsible)
