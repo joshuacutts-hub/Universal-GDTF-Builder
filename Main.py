@@ -1037,7 +1037,7 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                     highlight_option = "Value"
                     display_val = highlight_val
                 
-                hc1, hc2 = st.columns([1, 1.2])
+                hc1, hc2 = st.columns([1.2, 1])
                 with hc1:
                     hl_choice = st.selectbox(
                         "HL Type",
