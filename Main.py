@@ -878,7 +878,6 @@ for mode_idx, mode in enumerate(st.session_state.modes):
 
     ch_to_delete = None
     ch_to_move   = None
-    ch_to_reorder = None
 
     with st.expander(ch_label, expanded=True):
 
@@ -886,14 +885,6 @@ for mode_idx, mode in enumerate(st.session_state.modes):
             st.markdown(
                 '<p style="color:#AAAAAA;font-size:0.85rem;padding:0.5rem 0">' +
                 'No channels yet — use the picker below to add channels.</p>',
-                unsafe_allow_html=True
-            )
-        
-        # Header row for channel list
-        if ch_list:
-            st.markdown(
-                '<p style="color:#888;font-size:0.7rem;font-family:Share Tech Mono,monospace;'
-                'letter-spacing:0.08em;margin-bottom:0.3rem">CH# | NAME | ATTRIBUTE | DEFAULT | HIGHLIGHT | ACTIONS</p>',
                 unsafe_allow_html=True
             )
 
@@ -913,20 +904,17 @@ for mode_idx, mode in enumerate(st.session_state.modes):
             r1, r2, r3, r4, r5, r6, r7, r8 = st.columns([0.5, 2.2, 1.0, 0.6, 0.6, 0.3, 0.3, 0.3])
 
             with r1:
-                # Manual channel number input
-                new_ch_num = st.number_input(
-                    "Ch#", 
-                    min_value=1, 
-                    max_value=len(ch_list),
-                    value=ci+1,
-                    label_visibility="collapsed",
-                    key=f"chnum_{ch_id}",
-                    help="Enter channel number to reorder"
+                st.markdown(
+                    f'<p class="ch-num">{ci+1}</p>',
+                    unsafe_allow_html=True
                 )
-                if new_ch_num != ci+1:
-                    ch_to_reorder = (ci, new_ch_num - 1)
                     
             with r2:
+                st.markdown(
+                    '<p style="color:#888;font-size:0.65rem;font-family:Share Tech Mono,monospace;'
+                    'letter-spacing:0.05em;margin-bottom:-0.5rem">NAME</p>',
+                    unsafe_allow_html=True
+                )
                 new_name = st.text_input(
                     "ch", value=ch["name"],
                     label_visibility="collapsed",
@@ -937,11 +925,16 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                     
             with r3:
                 st.markdown(
-                    f'<div style="margin-top:0.5rem">{badge}</div>',
+                    f'<div style="margin-top:1.3rem">{badge}</div>',
                     unsafe_allow_html=True
                 )
                 
             with r4:
+                st.markdown(
+                    '<p style="color:#888;font-size:0.65rem;font-family:Share Tech Mono,monospace;'
+                    'letter-spacing:0.05em;margin-bottom:-0.5rem">DEFAULT</p>',
+                    unsafe_allow_html=True
+                )
                 # Default value input
                 default_val = ch.get("default", 0)
                 new_default = st.number_input(
@@ -957,6 +950,11 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                     ch["default"] = new_default
                     
             with r5:
+                st.markdown(
+                    '<p style="color:#888;font-size:0.65rem;font-family:Share Tech Mono,monospace;'
+                    'letter-spacing:0.05em;margin-bottom:-0.5rem">HIGHLIGHT</p>',
+                    unsafe_allow_html=True
+                )
                 # Highlight value input
                 highlight_val = ch.get("highlight", 255)
                 new_highlight = st.number_input(
@@ -1097,7 +1095,7 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                             unsafe_allow_html=True
                         )
 
-    # Apply moves, reorders, and deletes after full render to avoid index confusion
+    # Apply moves and deletes after full render to avoid index confusion
     if ch_to_delete is not None:
         ch_list.pop(ch_to_delete)
         st.rerun()
@@ -1107,13 +1105,53 @@ for mode_idx, mode in enumerate(st.session_state.modes):
         if 0 <= j < len(ch_list):
             ch_list[i], ch_list[j] = ch_list[j], ch_list[i]
         st.rerun()
-    if ch_to_reorder is not None:
-        old_idx, new_idx = ch_to_reorder
-        if 0 <= new_idx < len(ch_list) and old_idx != new_idx:
-            # Move channel from old_idx to new_idx
-            channel = ch_list.pop(old_idx)
-            ch_list.insert(new_idx, channel)
-        st.rerun()
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  BULK REORDER TOOL (for quickly reordering multiple channels)
+    # ══════════════════════════════════════════════════════════════════════════
+    if ch_list and len(ch_list) > 1:
+        with st.expander("🔄 REORDER CHANNELS — Enter new order"):
+            st.markdown(
+                '<p style="color:#BBBBBB;font-size:0.75rem;margin-bottom:0.5rem">'
+                'Enter channel numbers separated by commas (e.g., "1,3,2,4" to swap channels 2 and 3)</p>',
+                unsafe_allow_html=True
+            )
+            
+            # Show current order
+            current_order = ", ".join([f"{i+1}:{ch['name']}" for i, ch in enumerate(ch_list)])
+            st.markdown(
+                f'<p style="color:#888;font-size:0.7rem;font-family:Share Tech Mono,monospace">'
+                f'Current: {current_order}</p>',
+                unsafe_allow_html=True
+            )
+            
+            rc1, rc2 = st.columns([4, 1])
+            with rc1:
+                new_order_str = st.text_input(
+                    "New order",
+                    placeholder=f"e.g., {','.join(str(i+1) for i in range(len(ch_list)))}",
+                    key=f"reorder_input_{mode_idx}",
+                    label_visibility="collapsed"
+                )
+            with rc2:
+                if st.button("Apply", key=f"apply_reorder_{mode_idx}", use_container_width=True):
+                    try:
+                        # Parse the input
+                        new_order = [int(x.strip()) - 1 for x in new_order_str.split(",")]
+                        
+                        # Validate
+                        if len(new_order) != len(ch_list):
+                            st.error(f"❌ Must specify {len(ch_list)} positions")
+                        elif set(new_order) != set(range(len(ch_list))):
+                            st.error("❌ Must use each position exactly once")
+                        else:
+                            # Reorder the list
+                            new_ch_list = [ch_list[i] for i in new_order]
+                            mode["channel_list"] = new_ch_list
+                            st.success("✅ Channels reordered!")
+                            st.rerun()
+                    except (ValueError, IndexError):
+                        st.error("❌ Invalid format. Use numbers 1 to " + str(len(ch_list)) + " separated by commas")
 
     # ══════════════════════════════════════════════════════════════════════════
     #  CHANNEL PICKER  (below list, collapsible)
