@@ -215,10 +215,12 @@ class ChannelSlot:
         self.slot_name     = slot_name or name
 
 class ChannelDef:
-    def __init__(self, name, is_fine_byte=False, slots=None):
+    def __init__(self, name, is_fine_byte=False, slots=None, default=0, highlight=255):
         self.name         = name
         self.is_fine_byte = is_fine_byte
         self.slots        = slots or []
+        self.default      = default
+        self.highlight    = highlight
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -257,9 +259,10 @@ def _guid():
 def _new_channel_id():
     return uuid.uuid4().hex[:8]
 
-def make_channel_entry(name, fine=False):
+def make_channel_entry(name, fine=False, default=0, highlight=255):
     return {"id": _new_channel_id(), "name": name,
-            "is_fine": fine, "slots": []}
+            "is_fine": fine, "slots": [], 
+            "default": default, "highlight": highlight}
 
 def make_slot_entry(dmx_from=0, dmx_to=10, name=""):
     return {"dmx_from": dmx_from, "dmx_to": dmx_to, "name": name}
@@ -283,6 +286,8 @@ def channel_defs_from_mode(mode):
             name=ch["name"],
             is_fine_byte=ch.get("is_fine", False),
             slots=slots,
+            default=ch.get("default", 0),
+            highlight=ch.get("highlight", 255),
         ))
     return defs
 
@@ -424,7 +429,7 @@ def build_gdtf(fixture_name, manufacturer, modes_dict):
 
                 ch_el = ET.SubElement(chs_el, "DMXChannel",
                     DMXBreak="1", Offset=str(offset),
-                    Default="0/1", Highlight="255/1",
+                    Default=f"{ch.default}/1", Highlight=f"{ch.highlight}/1",
                     Geometry="Body", InitialFunction=initial_fn)
 
                 log_el = ET.SubElement(ch_el, "LogicalChannel",
@@ -436,7 +441,7 @@ def build_gdtf(fixture_name, manufacturer, modes_dict):
                     Attribute=attr,
                     OriginalAttribute=_safe(ch.name),
                     DMXFrom="0/1",
-                    Default="0/1",
+                    Default=f"{ch.default}/1",
                     PhysicalFrom="0.000000",
                     PhysicalTo="1.000000",
                     RealFade="0",
@@ -469,7 +474,7 @@ def build_gdtf(fixture_name, manufacturer, modes_dict):
 
                 ch_el = ET.SubElement(chs_el, "DMXChannel",
                     DMXBreak="1", Offset=str(offset),
-                    Default="0/1", Highlight="255/1",
+                    Default=f"{ch.default}/1", Highlight=f"{ch.highlight}/1",
                     Geometry="Body", InitialFunction=initial_fn)
 
                 log_el = ET.SubElement(ch_el, "LogicalChannel",
@@ -479,7 +484,7 @@ def build_gdtf(fixture_name, manufacturer, modes_dict):
                 ET.SubElement(log_el, "ChannelFunction",
                     Name=cf_name, Attribute=attr,
                     OriginalAttribute=_safe(ch.name),
-                    DMXFrom="0/1", Default="0/1",
+                    DMXFrom="0/1", Default=f"{ch.default}/1",
                     PhysicalFrom="0.000000", PhysicalTo="1.000000",
                     RealFade="0", RealAcceleration="0",
                     WheelSlotIndex="0")
@@ -873,6 +878,7 @@ for mode_idx, mode in enumerate(st.session_state.modes):
 
     ch_to_delete = None
     ch_to_move   = None
+    ch_to_reorder = None
 
     with st.expander(ch_label, expanded=True):
 
@@ -880,6 +886,14 @@ for mode_idx, mode in enumerate(st.session_state.modes):
             st.markdown(
                 '<p style="color:#AAAAAA;font-size:0.85rem;padding:0.5rem 0">' +
                 'No channels yet — use the picker below to add channels.</p>',
+                unsafe_allow_html=True
+            )
+        
+        # Header row for channel list
+        if ch_list:
+            st.markdown(
+                '<p style="color:#888;font-size:0.7rem;font-family:Share Tech Mono,monospace;'
+                'letter-spacing:0.08em;margin-bottom:0.3rem">CH# | NAME | ATTRIBUTE | DEFAULT | HIGHLIGHT | ACTIONS</p>',
                 unsafe_allow_html=True
             )
 
@@ -895,18 +909,24 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                 f'<span class="badge {"b-ok" if known else "b-unk"}">{attr}</span>'
             )
 
-            # ── Channel row: number | name | badge | ▲ | ▼ | ✕ ──────────────────
-            # Use stable ch_id in widget key so moves don't corrupt input values
-            r1, r2, r3, r4, r5, r6 = st.columns([0.4, 2.5, 1.2, 0.35, 0.35, 0.35])
+            # ── Channel row: CH# | name | badge | default | highlight | ▲ | ▼ | ✕ ──
+            r1, r2, r3, r4, r5, r6, r7, r8 = st.columns([0.5, 2.2, 1.0, 0.6, 0.6, 0.3, 0.3, 0.3])
 
             with r1:
-                st.markdown(
-                    f'<p class="ch-num">{ci+1}</p>',
-                    unsafe_allow_html=True
+                # Manual channel number input
+                new_ch_num = st.number_input(
+                    "Ch#", 
+                    min_value=1, 
+                    max_value=len(ch_list),
+                    value=ci+1,
+                    label_visibility="collapsed",
+                    key=f"chnum_{ch_id}",
+                    help="Enter channel number to reorder"
                 )
+                if new_ch_num != ci+1:
+                    ch_to_reorder = (ci, new_ch_num - 1)
+                    
             with r2:
-                # Key uses stable channel ID — so after a swap the widget
-                # renders with the correct stored name, not the old position's value
                 new_name = st.text_input(
                     "ch", value=ch["name"],
                     label_visibility="collapsed",
@@ -914,21 +934,53 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                 )
                 if new_name != ch["name"]:
                     ch["name"] = new_name
+                    
             with r3:
                 st.markdown(
                     f'<div style="margin-top:0.5rem">{badge}</div>',
                     unsafe_allow_html=True
                 )
+                
             with r4:
+                # Default value input
+                default_val = ch.get("default", 0)
+                new_default = st.number_input(
+                    "Default",
+                    min_value=0,
+                    max_value=255,
+                    value=default_val,
+                    label_visibility="collapsed",
+                    key=f"default_{ch_id}",
+                    help="Default DMX value"
+                )
+                if new_default != default_val:
+                    ch["default"] = new_default
+                    
+            with r5:
+                # Highlight value input
+                highlight_val = ch.get("highlight", 255)
+                new_highlight = st.number_input(
+                    "Highlight",
+                    min_value=0,
+                    max_value=255,
+                    value=highlight_val,
+                    label_visibility="collapsed",
+                    key=f"highlight_{ch_id}",
+                    help="Highlight DMX value"
+                )
+                if new_highlight != highlight_val:
+                    ch["highlight"] = new_highlight
+                    
+            with r6:
                 if st.button("▲", key=f"up_{ch_id}",
                              disabled=ci == 0, help="Move up"):
                     ch_to_move = (ci, -1)
-            with r5:
+            with r7:
                 if st.button("▼", key=f"dn_{ch_id}",
                              disabled=ci == len(ch_list)-1,
                              help="Move down"):
                     ch_to_move = (ci, 1)
-            with r6:
+            with r8:
                 if st.button("✕", key=f"del_{ch_id}",
                              help="Remove channel"):
                     ch_to_delete = ci
@@ -1045,7 +1097,7 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                             unsafe_allow_html=True
                         )
 
-    # Apply moves and deletes after full render to avoid index confusion
+    # Apply moves, reorders, and deletes after full render to avoid index confusion
     if ch_to_delete is not None:
         ch_list.pop(ch_to_delete)
         st.rerun()
@@ -1054,6 +1106,13 @@ for mode_idx, mode in enumerate(st.session_state.modes):
         j = i + d
         if 0 <= j < len(ch_list):
             ch_list[i], ch_list[j] = ch_list[j], ch_list[i]
+        st.rerun()
+    if ch_to_reorder is not None:
+        old_idx, new_idx = ch_to_reorder
+        if 0 <= new_idx < len(ch_list) and old_idx != new_idx:
+            # Move channel from old_idx to new_idx
+            channel = ch_list.pop(old_idx)
+            ch_list.insert(new_idx, channel)
         st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
