@@ -17,6 +17,9 @@ ATTR_MAP = {
     "master":           ("Dimmer",              "Dimming",  "Intensity", "Dimmer"),
     "pan":              ("Pan",                 "Position", "Position",  "PanTilt"),
     "tilt":             ("Tilt",                "Position", "Position",  "PanTilt"),
+    "x":                ("XYZ_X",               "Position", "Position",  "XYZ"),
+    "y":                ("XYZ_Y",               "Position", "Position",  "XYZ"),
+    "z":                ("XYZ_Z",               "Position", "Position",  "XYZ"),
     "pan speed":        ("PanRotate",           "Position", "Position",  "PanTilt"),
     "tilt speed":       ("TiltRotate",          "Position", "Position",  "PanTilt"),
     "red":              ("ColorAdd_R",          "Color",    "Color",     "RGB"),
@@ -89,6 +92,7 @@ WHEEL_ATTRS = {
 # Channels that are continuous (no DMX slots needed)
 CONTINUOUS = {
     "Dimmer", "Dimmer Fine", "Pan", "Pan Fine", "Tilt", "Tilt Fine",
+    "X", "X Fine", "Y", "Y Fine", "Z", "Z Fine",
     "Red", "Green", "Blue", "White", "Amber", "Lime", "UV", "Indigo",
     "Cyan", "Magenta", "Yellow", "CTO", "CTB", "Hue", "Saturation",
     "Zoom", "Zoom Fine", "Focus", "Focus Fine", "Iris",
@@ -159,6 +163,9 @@ CHANNEL_CATALOGUE = {
     "POSITION": [
         ("Pan",False),("Pan Fine",True),
         ("Tilt",False),("Tilt Fine",True),
+        ("X",False),("X Fine",True),
+        ("Y",False),("Y Fine",True),
+        ("Z",False),("Z Fine",True),
         ("Pan Speed",False),("Tilt Speed",False),
     ],
     "COLOR — RGB/W": [
@@ -278,8 +285,12 @@ def get_smart_defaults(channel_name):
     if any(x in name_lower for x in ["cyan", "magenta", "yellow"]):
         return (0, 0)
     
-    # Pan/Tilt - center position, no highlight (None)
+    # Pan/Tilt/XYZ - center position, no highlight (None)
     if any(x in name_lower for x in ["pan", "tilt"]) and "speed" not in name_lower and "rotate" not in name_lower:
+        return (128, None)
+    
+    # X, Y, Z position - center position, no highlight (None)
+    if name_lower in ["x", "y", "z"]:
         return (128, None)
     
     # Color wheels, gobos, effects - open/off position
