@@ -15,13 +15,18 @@ ATTR_MAP = {
     "dimmer":           ("Dimmer",              "Dimming",  "Intensity", "Dimmer"),
     "intensity":        ("Dimmer",              "Dimming",  "Intensity", "Dimmer"),
     "master":           ("Dimmer",              "Dimming",  "Intensity", "Dimmer"),
+    "beam dimmer":      ("Dimmer",              "Dimming",  "Intensity", "Dimmer"),
+    "fog dimmer":       ("Fog1",                "Beam",     "Beam",      "Fog"),
     "pan":              ("Pan",                 "Position", "Position",  "PanTilt"),
     "tilt":             ("Tilt",                "Position", "Position",  "PanTilt"),
+    "pan flip":         ("PanMode",             "Position", "Position",  "PanTilt"),
+    "tilt flip":        ("TiltMode",            "Position", "Position",  "PanTilt"),
     "x":                ("XYZ_X",               "Position", "Position",  "XYZ"),
     "y":                ("XYZ_Y",               "Position", "Position",  "XYZ"),
     "z":                ("XYZ_Z",               "Position", "Position",  "XYZ"),
     "pan speed":        ("PanRotate",           "Position", "Position",  "PanTilt"),
     "tilt speed":       ("TiltRotate",          "Position", "Position",  "PanTilt"),
+    "rotation":         ("AnimationWheel1",     "Beam",     "Beam",      "AnimationWheel"),
     "red":              ("ColorAdd_R",          "Color",    "Color",     "RGB"),
     "green":            ("ColorAdd_G",          "Color",    "Color",     "RGB"),
     "blue":             ("ColorAdd_B",          "Color",    "Color",     "RGB"),
@@ -51,13 +56,26 @@ ATTR_MAP = {
     "iris":             ("Iris",               "Beam",     "Beam",      "Iris"),
     "frost":            ("Frost1",             "Beam",     "Beam",      "Frost"),
     "diffusion":        ("Frost1",             "Beam",     "Beam",      "Frost"),
+    "beam thickness":   ("BeamEffect1",        "Beam",     "Beam",      "BeamEffect"),
+    "beam flicker":     ("BeamEffect1",        "Beam",     "Beam",      "BeamEffect"),
+    "fog mix":          ("FogEffect1",         "Beam",     "Beam",      "Fog"),
+    "fog flicker":      ("FogEffect1",         "Beam",     "Beam",      "Fog"),
+    "fog a divide":     ("Fog1",               "Beam",     "Beam",      "Fog"),
+    "fog a speed x":    ("Fog1",               "Beam",     "Beam",      "Fog"),
+    "fog a speed y":    ("Fog1",               "Beam",     "Beam",      "Fog"),
+    "fog b divide":     ("Fog2",               "Beam",     "Beam",      "Fog"),
+    "fog b speed x":    ("Fog2",               "Beam",     "Beam",      "Fog"),
+    "fog b speed y":    ("Fog2",               "Beam",     "Beam",      "Fog"),
     "gobo":             ("Gobo1",             "Gobo",     "Gobo",      "Gobo"),
     "gobo wheel":       ("Gobo1",             "Gobo",     "Gobo",      "Gobo"),
     "gobo 1":           ("Gobo1",             "Gobo",     "Gobo",      "Gobo"),
     "gobo 2":           ("Gobo2",             "Gobo",     "Gobo",      "Gobo"),
+    "pattern":          ("Gobo1",             "Gobo",     "Gobo",      "Gobo"),
     "gobo rotation":    ("Gobo1Pos",          "Gobo",     "Gobo",      "Gobo"),
     "gobo spin":        ("Gobo1PosRotate",    "Gobo",     "Gobo",      "Gobo"),
     "gobo index":       ("Gobo1Pos",          "Gobo",     "Gobo",      "Gobo"),
+    "loop":             ("AnimationSystem1",  "Gobo",     "Gobo",      "AnimationSystem"),
+    "transition time":  ("TransitionTime",    "Beam",     "Beam",      "Effects"),
     "prism":            ("Prism1",            "Beam",     "Beam",      "Prism"),
     "prism rotation":   ("Prism1Pos",         "Beam",     "Beam",      "Prism"),
     "effects":          ("Effects1",          "Beam",     "Beam",      "Effects"),
@@ -85,14 +103,17 @@ ATTR_MAP = {
 
 WHEEL_ATTRS = {
     "Color1", "Color2", "Gobo1", "Gobo2", "Gobo1Pos", "Gobo2Pos",
-    "Prism1", "Effects1", "Animation1", "Macro", "LampControl",
-    "Function", "Shutter1", "Shutter1Strobe",
+    "Prism1", "Effects1", "Animation1", "AnimationWheel1", "AnimationSystem1",
+    "Macro", "LampControl", "Function", "Shutter1", "Shutter1Strobe",
+    "PanMode", "TiltMode", "Fog1", "Fog2", "BeamEffect1", "FogEffect1",
 }
 
 # Channels that are continuous (no DMX slots needed)
 CONTINUOUS = {
-    "Dimmer", "Dimmer Fine", "Pan", "Pan Fine", "Tilt", "Tilt Fine",
+    "Dimmer", "Dimmer Fine", "Beam Dimmer", "Fog Dimmer",
+    "Pan", "Pan Fine", "Tilt", "Tilt Fine",
     "X", "X Fine", "Y", "Y Fine", "Z", "Z Fine",
+    "Rotation", "Rotation Fine",
     "Red", "Green", "Blue", "White", "Amber", "Lime", "UV", "Indigo",
     "Cyan", "Magenta", "Yellow", "CTO", "CTB", "Hue", "Saturation",
     "Zoom", "Zoom Fine", "Focus", "Focus Fine", "Iris",
@@ -101,6 +122,10 @@ CONTINUOUS = {
     "Blade 1", "Blade 1 Fine", "Blade 2", "Blade 2 Fine", 
     "Blade 3", "Blade 3 Fine", "Blade 4", "Blade 4 Fine", 
     "Blade Rotation", "Blade Rotation Fine",
+    "Beam Thickness", "Beam Flicker", "Fog Flicker",
+    "Fog A Divide", "Fog A Speed X", "Fog A Speed Y",
+    "Fog B Divide", "Fog B Speed X", "Fog B Speed Y",
+    "Transition Time",
 }
 
 PRESETS = {
@@ -111,6 +136,14 @@ PRESETS = {
         (200,249,"Random Strobe"),(250,255,"Open"),
     ],
     "Strobe": [(0,9,"Closed"),(10,19,"Open"),(20,255,"Strobe Slow-Fast")],
+    "Pan Flip": [(0,127,"OFF"),(128,255,"ON")],
+    "Tilt Flip": [(0,127,"OFF"),(128,255,"ON")],
+    "Pattern": [
+        (0,17,"Beam"),(18,30,"Beam+Solid"),
+        (31,255,"Patterns"),
+    ],
+    "Loop": [(0,127,"OFF"),(128,255,"ON")],
+    "Fog Mix": [(0,9,"A.B"),(10,255,"Mix")],
     "Macro": [
         (0,9,"Off"),(10,19,"Macro 1"),(20,29,"Macro 2"),
         (30,39,"Macro 3"),(40,49,"Macro 4"),(50,59,"Macro 5"),
@@ -161,10 +194,14 @@ PRESETS = {
 }
 
 CHANNEL_CATALOGUE = {
-    "DIMMING": [("Dimmer",False),("Dimmer Fine",True)],
+    "DIMMING": [
+        ("Dimmer",False),("Dimmer Fine",True),
+        ("Beam Dimmer",False),("Fog Dimmer",False),
+    ],
     "POSITION": [
         ("Pan",False),("Pan Fine",True),
         ("Tilt",False),("Tilt Fine",True),
+        ("Pan Flip",False),("Tilt Flip",False),
         ("X",False),("X Fine",True),
         ("Y",False),("Y Fine",True),
         ("Z",False),("Z Fine",True),
@@ -186,9 +223,18 @@ CHANNEL_CATALOGUE = {
         ("Zoom",False),("Zoom Fine",True),
         ("Focus",False),("Focus Fine",True),
         ("Iris",False),("Frost",False),("Diffusion",False),
+        ("Rotation",False),("Rotation Fine",True),
+        ("Beam Thickness",False),("Beam Flicker",False),
+        ("Transition Time",False),
+    ],
+    "BEAM — FOG": [
+        ("Fog Mix",False),("Fog Flicker",False),
+        ("Fog A Divide",False),("Fog A Speed X",False),("Fog A Speed Y",False),
+        ("Fog B Divide",False),("Fog B Speed X",False),("Fog B Speed Y",False),
     ],
     "GOBO": [
         ("Gobo Wheel",False),("Gobo 1",False),("Gobo 2",False),
+        ("Pattern",False),("Loop",False),
         ("Gobo Rotation",False),("Gobo Index",False),("Gobo Spin",False),
     ],
     "PRISM / EFFECTS": [
@@ -226,20 +272,43 @@ class ChannelSlot:
         self.slot_name     = slot_name or name
 
 class ChannelDef:
-    def __init__(self, name, is_fine_byte=False, slots=None, default=0, highlight=None):
+    def __init__(self, name, is_fine_byte=False, slots=None, default=0, highlight=None, custom_wheel=None):
         self.name         = name
         self.is_fine_byte = is_fine_byte
         self.slots        = slots or []
         self.default      = default
         self.highlight    = highlight  # Can be None to exclude from highlight
+        self.custom_wheel = custom_wheel  # Custom MA3 wheel assignment
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
 
-def resolve_attr(raw):
+def resolve_attr(raw, custom_wheel=None):
+    """
+    Resolves a channel name to (attribute, feature_group, attribute_group, sub_attribute).
+    If custom_wheel is provided, uses that instead of auto-detection.
+    """
     clean = raw.lower().strip()
+    
+    # If custom wheel is specified, use it
+    if custom_wheel and custom_wheel != "Auto":
+        safe = re.sub(r'[^A-Za-z0-9_]', '_', raw.strip()) or "Custom"
+        # Map wheel name to GDTF groups
+        wheel_map = {
+            "Dimming": ("Intensity", "Dimmer"),
+            "Position": ("Position", "PanTilt"),
+            "Color": ("Color", "RGB"),
+            "Gobo": ("Gobo", "Gobo"),
+            "Beam": ("Beam", "Shutter"),
+            "Shapers": ("Shapers", "Blade"),
+            "Control": ("Control", "Function"),
+        }
+        feature, sub = wheel_map.get(custom_wheel, ("Control", "Function"))
+        return (safe, feature, feature, sub)
+    
+    # Otherwise use auto-detection
     if clean in ATTR_MAP:
         return ATTR_MAP[clean]
     for key, val in ATTR_MAP.items():
@@ -290,12 +359,32 @@ def get_smart_defaults(channel_name):
         return (0, 0)
     
     # Pan/Tilt/XYZ - center position, no highlight (None)
-    if any(x in name_lower for x in ["pan", "tilt"]) and "speed" not in name_lower and "rotate" not in name_lower:
+    if any(x in name_lower for x in ["pan", "tilt"]) and "speed" not in name_lower and "rotate" not in name_lower and "flip" not in name_lower:
         return (128, None)
+    
+    # Pan Flip / Tilt Flip - OFF by default
+    if "flip" in name_lower:
+        return (0, None)
     
     # X, Y, Z position - center position, no highlight (None)
     if name_lower in ["x", "y", "z"]:
         return (128, None)
+    
+    # Rotation - center, no highlight
+    if "rotation" in name_lower and "gobo" not in name_lower and "prism" not in name_lower and "blade" not in name_lower:
+        return (128, None)
+    
+    # Pattern, Loop - off by default
+    if any(x in name_lower for x in ["pattern", "loop"]):
+        return (0, None)
+    
+    # Fog channels - off/zero
+    if "fog" in name_lower:
+        return (0, None)
+    
+    # Beam effects - off/zero
+    if any(x in name_lower for x in ["beam thickness", "beam flicker", "transition time"]):
+        return (0, None)
     
     # Color wheels, gobos, effects - open/off position
     if any(x in name_lower for x in ["color", "colour", "gobo", "prism", "effect", "animation", "macro", "scene", "program"]):
@@ -368,6 +457,7 @@ def channel_defs_from_mode(mode):
             slots=slots,
             default=ch.get("default", 0),
             highlight=highlight_val,  # Can be None
+            custom_wheel=ch.get("custom_wheel"),  # Custom MA3 wheel if specified
         ))
     return defs
 
@@ -395,7 +485,7 @@ def build_gdtf(fixture_name, manufacturer, modes_dict):
     for channels in modes_dict.values():
         for ch in channels:
             if not ch.is_fine_byte and ch.name.strip():
-                attr, fg, feat, ag = resolve_attr(ch.name)
+                attr, fg, feat, ag = resolve_attr(ch.name, ch.custom_wheel)
                 used_attrs[attr] = (fg, feat, ag)
 
     # ── AttributeDefinitions ────────────────────────────────────────────────
@@ -430,7 +520,7 @@ def build_gdtf(fixture_name, manufacturer, modes_dict):
         for ch in mode_channels:
             if ch.is_fine_byte or not ch.slots:
                 continue
-            attr, *_ = resolve_attr(ch.name)
+            attr, *_ = resolve_attr(ch.name, ch.custom_wheel)
             if attr not in WHEEL_ATTRS or attr in wheel_registry:
                 continue
             wheel_registry[attr] = _safe(ch.name, attr)
@@ -440,7 +530,7 @@ def build_gdtf(fixture_name, manufacturer, modes_dict):
         for ch in mode_channels:
             if ch.is_fine_byte or not ch.slots:
                 continue
-            attr, *_ = resolve_attr(ch.name)
+            attr, *_ = resolve_attr(ch.name, ch.custom_wheel)
             wname = wheel_registry.get(attr)
             if not wname:
                 continue
@@ -492,7 +582,7 @@ def build_gdtf(fixture_name, manufacturer, modes_dict):
                 prev_ch_el = None
                 continue
 
-            attr, fg, feat, ag = resolve_attr(ch.name)
+            attr, fg, feat, ag = resolve_attr(ch.name, ch.custom_wheel)
             safe_ch = _safe(ch.name, f"Ch{offset}")
 
             if ch.slots:
@@ -976,14 +1066,15 @@ for mode_idx, mode in enumerate(st.session_state.modes):
 
         for ci, ch in enumerate(ch_list):
             ch_id = ch["id"]
-            attr, *_ = resolve_attr(ch["name"])
+            attr, *_ = resolve_attr(ch["name"], ch.get("custom_wheel"))
             known = any(k in ch["name"].lower() for k in ATTR_MAP)
             fine  = ch.get("is_fine", False)
+            has_custom_wheel = ch.get("custom_wheel") and ch.get("custom_wheel") != "Auto"
 
             badge = (
                 '<span class="badge b-fine">FINE</span>'
                 if fine else
-                f'<span class="badge {"b-ok" if known else "b-unk"}">{attr}</span>'
+                f'<span class="badge {"b-ok" if (known or has_custom_wheel) else "b-unk"}">{attr}</span>'
             )
 
             # ── Channel row: CH# | name | badge | default | highlight | ▲ | ▼ | ✕ ──
@@ -1010,8 +1101,12 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                     ch["name"] = new_name
                     
             with r3:
+                # Show custom wheel indicator if set
+                wheel_indicator = ""
+                if has_custom_wheel:
+                    wheel_indicator = f'<span style="color:#66BB6A;font-size:0.6rem;margin-left:0.2rem">⚙ {ch.get("custom_wheel")}</span>'
                 st.markdown(
-                    f'<div style="margin-top:1.3rem">{badge}</div>',
+                    f'<div style="margin-top:1.3rem">{badge}{wheel_indicator}</div>',
                     unsafe_allow_html=True
                 )
                 
@@ -1291,7 +1386,7 @@ for mode_idx, mode in enumerate(st.session_state.modes):
             'CUSTOM CHANNEL NAME</p>',
             unsafe_allow_html=True
         )
-        cc1, cc2 = st.columns([4, 1])
+        cc1, cc2, cc3 = st.columns([3, 2, 1])
         with cc1:
             custom_name = st.text_input(
                 "Custom", label_visibility="collapsed",
@@ -1299,13 +1394,23 @@ for mode_idx, mode in enumerate(st.session_state.modes):
                 key=f"custom_name_{mode_idx}"
             )
         with cc2:
+            custom_wheel = st.selectbox(
+                "Wheel",
+                options=["Auto", "Dimming", "Position", "Color", "Gobo", "Beam", "Shapers", "Control"],
+                index=0,
+                key=f"custom_wheel_{mode_idx}",
+                help="Select which MA3 wheel this channel belongs to"
+            )
+        with cc3:
             if st.button("ADD", key=f"custom_add_{mode_idx}",
                          use_container_width=True):
                 if custom_name.strip():
-                    ch_list.append(
-                        make_channel_entry(custom_name.strip(),
-                                           is_fine(custom_name))
-                    )
+                    new_ch = make_channel_entry(custom_name.strip(),
+                                                 is_fine(custom_name))
+                    # Store custom wheel selection if not Auto
+                    if custom_wheel != "Auto":
+                        new_ch["custom_wheel"] = custom_wheel
+                    ch_list.append(new_ch)
                     st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)  # end .card
