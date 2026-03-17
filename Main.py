@@ -27,6 +27,7 @@ ATTR_MAP = {
     "pan speed":        ("PanRotate",           "Position", "Position",  "PanTilt"),
     "tilt speed":       ("TiltRotate",          "Position", "Position",  "PanTilt"),
     "rotation":         ("AnimationWheel1",     "Beam",     "Beam",      "AnimationWheel"),
+    "rotation flip":    ("AnimationWheelMode",  "Beam",     "Beam",      "AnimationWheel"),
     "red":              ("ColorAdd_R",          "Color",    "Color",     "RGB"),
     "green":            ("ColorAdd_G",          "Color",    "Color",     "RGB"),
     "blue":             ("ColorAdd_B",          "Color",    "Color",     "RGB"),
@@ -103,7 +104,7 @@ ATTR_MAP = {
 
 WHEEL_ATTRS = {
     "Color1", "Color2", "Gobo1", "Gobo2", "Gobo1Pos", "Gobo2Pos",
-    "Prism1", "Effects1", "Animation1", "AnimationWheel1", "AnimationSystem1",
+    "Prism1", "Effects1", "Animation1", "AnimationWheel1", "AnimationWheelMode", "AnimationSystem1",
     "Macro", "LampControl", "Function", "Shutter1", "Shutter1Strobe",
     "PanMode", "TiltMode", "Fog1", "Fog2", "BeamEffect1", "FogEffect1",
 }
@@ -138,6 +139,7 @@ PRESETS = {
     "Strobe": [(0,9,"Closed"),(10,19,"Open"),(20,255,"Strobe Slow-Fast")],
     "Pan Flip": [(0,127,"OFF"),(128,255,"ON")],
     "Tilt Flip": [(0,127,"OFF"),(128,255,"ON")],
+    "Rotation Flip": [(0,127,"OFF"),(128,255,"ON")],
     "Pattern": [
         (0,17,"Beam"),(18,30,"Beam+Solid"),
         (31,255,"Patterns"),
@@ -223,7 +225,7 @@ CHANNEL_CATALOGUE = {
         ("Zoom",False),("Zoom Fine",True),
         ("Focus",False),("Focus Fine",True),
         ("Iris",False),("Frost",False),("Diffusion",False),
-        ("Rotation",False),("Rotation Fine",True),
+        ("Rotation",False),("Rotation Fine",True),("Rotation Flip",False),
         ("Beam Thickness",False),("Beam Flicker",False),
         ("Transition Time",False),
     ],
@@ -1389,7 +1391,9 @@ for mode_idx, mode in enumerate(st.session_state.modes):
         cc1, cc2, cc3 = st.columns([3, 2, 1])
         with cc1:
             custom_name = st.text_input(
-                "Custom", label_visibility="collapsed",
+                "Custom", 
+                value="",
+                label_visibility="collapsed",
                 placeholder="e.g. Pixel Row 1 / Virtual Dimmer",
                 key=f"custom_name_{mode_idx}"
             )
@@ -1404,7 +1408,7 @@ for mode_idx, mode in enumerate(st.session_state.modes):
         with cc3:
             if st.button("ADD", key=f"custom_add_{mode_idx}",
                          use_container_width=True):
-                if custom_name.strip():
+                if custom_name and custom_name.strip():
                     new_ch = make_channel_entry(custom_name.strip(),
                                                  is_fine(custom_name))
                     # Store custom wheel selection if not Auto
