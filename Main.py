@@ -98,7 +98,9 @@ CONTINUOUS = {
     "Zoom", "Zoom Fine", "Focus", "Focus Fine", "Iris",
     "Pan Speed", "Tilt Speed", "Effects Speed", "Effects Fade",
     "Gobo Rotation", "Gobo Spin", "Gobo Index", "Prism Rotation",
-    "Blade 1", "Blade 2", "Blade 3", "Blade 4", "Blade Rotation",
+    "Blade 1", "Blade 1 Fine", "Blade 2", "Blade 2 Fine", 
+    "Blade 3", "Blade 3 Fine", "Blade 4", "Blade 4 Fine", 
+    "Blade Rotation", "Blade Rotation Fine",
 }
 
 PRESETS = {
@@ -195,9 +197,11 @@ CHANNEL_CATALOGUE = {
         ("Effects Fade",False),("Animation",False),
     ],
     "SHAPERS": [
-        ("Blade 1",False),("Blade 2",False),
-        ("Blade 3",False),("Blade 4",False),
-        ("Blade Rotation",False),
+        ("Blade 1",False),("Blade 1 Fine",True),
+        ("Blade 2",False),("Blade 2 Fine",True),
+        ("Blade 3",False),("Blade 3 Fine",True),
+        ("Blade 4",False),("Blade 4 Fine",True),
+        ("Blade Rotation",False),("Blade Rotation Fine",True),
     ],
     "CONTROL": [
         ("Macro",False),("Scene",False),("Program",False),
