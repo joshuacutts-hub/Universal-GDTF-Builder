@@ -15,8 +15,6 @@ ATTR_MAP = {
     "dimmer":           ("Dimmer",              "Dimming",  "Intensity", "Dimmer"),
     "intensity":        ("Dimmer",              "Dimming",  "Intensity", "Dimmer"),
     "master":           ("Dimmer",              "Dimming",  "Intensity", "Dimmer"),
-    "beam dimmer":      ("Dimmer",              "Dimming",  "Intensity", "Dimmer"),
-    "fog dimmer":       ("Fog1",                "Beam",     "Beam",      "Fog"),
     "pan":              ("Pan",                 "Position", "Position",  "PanTilt"),
     "tilt":             ("Tilt",                "Position", "Position",  "PanTilt"),
     "pan flip":         ("PanMode",             "Position", "Position",  "PanTilt"),
@@ -57,26 +55,13 @@ ATTR_MAP = {
     "iris":             ("Iris",               "Beam",     "Beam",      "Iris"),
     "frost":            ("Frost1",             "Beam",     "Beam",      "Frost"),
     "diffusion":        ("Frost1",             "Beam",     "Beam",      "Frost"),
-    "beam thickness":   ("BeamEffect1",        "Beam",     "Beam",      "BeamEffect"),
-    "beam flicker":     ("BeamEffect1",        "Beam",     "Beam",      "BeamEffect"),
-    "fog mix":          ("FogEffect1",         "Beam",     "Beam",      "Fog"),
-    "fog flicker":      ("FogEffect1",         "Beam",     "Beam",      "Fog"),
-    "fog a divide":     ("Fog1",               "Beam",     "Beam",      "Fog"),
-    "fog a speed x":    ("Fog1",               "Beam",     "Beam",      "Fog"),
-    "fog a speed y":    ("Fog1",               "Beam",     "Beam",      "Fog"),
-    "fog b divide":     ("Fog2",               "Beam",     "Beam",      "Fog"),
-    "fog b speed x":    ("Fog2",               "Beam",     "Beam",      "Fog"),
-    "fog b speed y":    ("Fog2",               "Beam",     "Beam",      "Fog"),
     "gobo":             ("Gobo1",             "Gobo",     "Gobo",      "Gobo"),
     "gobo wheel":       ("Gobo1",             "Gobo",     "Gobo",      "Gobo"),
     "gobo 1":           ("Gobo1",             "Gobo",     "Gobo",      "Gobo"),
     "gobo 2":           ("Gobo2",             "Gobo",     "Gobo",      "Gobo"),
-    "pattern":          ("Gobo1",             "Gobo",     "Gobo",      "Gobo"),
     "gobo rotation":    ("Gobo1Pos",          "Gobo",     "Gobo",      "Gobo"),
     "gobo spin":        ("Gobo1PosRotate",    "Gobo",     "Gobo",      "Gobo"),
     "gobo index":       ("Gobo1Pos",          "Gobo",     "Gobo",      "Gobo"),
-    "loop":             ("AnimationSystem1",  "Gobo",     "Gobo",      "AnimationSystem"),
-    "transition time":  ("TransitionTime",    "Beam",     "Beam",      "Effects"),
     "prism":            ("Prism1",            "Beam",     "Beam",      "Prism"),
     "prism rotation":   ("Prism1Pos",         "Beam",     "Beam",      "Prism"),
     "effects":          ("Effects1",          "Beam",     "Beam",      "Effects"),
@@ -104,14 +89,14 @@ ATTR_MAP = {
 
 WHEEL_ATTRS = {
     "Color1", "Color2", "Gobo1", "Gobo2", "Gobo1Pos", "Gobo2Pos",
-    "Prism1", "Effects1", "Animation1", "AnimationWheel1", "AnimationWheelMode", "AnimationSystem1",
+    "Prism1", "Effects1", "Animation1", "AnimationWheel1", "AnimationWheelMode",
     "Macro", "LampControl", "Function", "Shutter1", "Shutter1Strobe",
-    "PanMode", "TiltMode", "Fog1", "Fog2", "BeamEffect1", "FogEffect1",
+    "PanMode", "TiltMode",
 }
 
 # Channels that are continuous (no DMX slots needed)
 CONTINUOUS = {
-    "Dimmer", "Dimmer Fine", "Beam Dimmer", "Fog Dimmer",
+    "Dimmer", "Dimmer Fine",
     "Pan", "Pan Fine", "Tilt", "Tilt Fine",
     "X", "X Fine", "Y", "Y Fine", "Z", "Z Fine",
     "Rotation", "Rotation Fine",
@@ -123,10 +108,6 @@ CONTINUOUS = {
     "Blade 1", "Blade 1 Fine", "Blade 2", "Blade 2 Fine", 
     "Blade 3", "Blade 3 Fine", "Blade 4", "Blade 4 Fine", 
     "Blade Rotation", "Blade Rotation Fine",
-    "Beam Thickness", "Beam Flicker", "Fog Flicker",
-    "Fog A Divide", "Fog A Speed X", "Fog A Speed Y",
-    "Fog B Divide", "Fog B Speed X", "Fog B Speed Y",
-    "Transition Time",
 }
 
 PRESETS = {
@@ -140,12 +121,6 @@ PRESETS = {
     "Pan Flip": [(0,127,"OFF"),(128,255,"ON")],
     "Tilt Flip": [(0,127,"OFF"),(128,255,"ON")],
     "Rotation Flip": [(0,127,"OFF"),(128,255,"ON")],
-    "Pattern": [
-        (0,17,"Beam"),(18,30,"Beam+Solid"),
-        (31,255,"Patterns"),
-    ],
-    "Loop": [(0,127,"OFF"),(128,255,"ON")],
-    "Fog Mix": [(0,9,"A.B"),(10,255,"Mix")],
     "Macro": [
         (0,9,"Off"),(10,19,"Macro 1"),(20,29,"Macro 2"),
         (30,39,"Macro 3"),(40,49,"Macro 4"),(50,59,"Macro 5"),
@@ -196,10 +171,7 @@ PRESETS = {
 }
 
 CHANNEL_CATALOGUE = {
-    "DIMMING": [
-        ("Dimmer",False),("Dimmer Fine",True),
-        ("Beam Dimmer",False),("Fog Dimmer",False),
-    ],
+    "DIMMING": [("Dimmer",False),("Dimmer Fine",True)],
     "POSITION": [
         ("Pan",False),("Pan Fine",True),
         ("Tilt",False),("Tilt Fine",True),
@@ -226,17 +198,9 @@ CHANNEL_CATALOGUE = {
         ("Focus",False),("Focus Fine",True),
         ("Iris",False),("Frost",False),("Diffusion",False),
         ("Rotation",False),("Rotation Fine",True),("Rotation Flip",False),
-        ("Beam Thickness",False),("Beam Flicker",False),
-        ("Transition Time",False),
-    ],
-    "BEAM — FOG": [
-        ("Fog Mix",False),("Fog Flicker",False),
-        ("Fog A Divide",False),("Fog A Speed X",False),("Fog A Speed Y",False),
-        ("Fog B Divide",False),("Fog B Speed X",False),("Fog B Speed Y",False),
     ],
     "GOBO": [
         ("Gobo Wheel",False),("Gobo 1",False),("Gobo 2",False),
-        ("Pattern",False),("Loop",False),
         ("Gobo Rotation",False),("Gobo Index",False),("Gobo Spin",False),
     ],
     "PRISM / EFFECTS": [
@@ -364,7 +328,7 @@ def get_smart_defaults(channel_name):
     if any(x in name_lower for x in ["pan", "tilt"]) and "speed" not in name_lower and "rotate" not in name_lower and "flip" not in name_lower:
         return (128, None)
     
-    # Pan Flip / Tilt Flip - OFF by default
+    # Pan Flip / Tilt Flip / Rotation Flip - OFF by default
     if "flip" in name_lower:
         return (0, None)
     
@@ -375,18 +339,6 @@ def get_smart_defaults(channel_name):
     # Rotation - center, no highlight
     if "rotation" in name_lower and "gobo" not in name_lower and "prism" not in name_lower and "blade" not in name_lower:
         return (128, None)
-    
-    # Pattern, Loop - off by default
-    if any(x in name_lower for x in ["pattern", "loop"]):
-        return (0, None)
-    
-    # Fog channels - off/zero
-    if "fog" in name_lower:
-        return (0, None)
-    
-    # Beam effects - off/zero
-    if any(x in name_lower for x in ["beam thickness", "beam flicker", "transition time"]):
-        return (0, None)
     
     # Color wheels, gobos, effects - open/off position
     if any(x in name_lower for x in ["color", "colour", "gobo", "prism", "effect", "animation", "macro", "scene", "program"]):
